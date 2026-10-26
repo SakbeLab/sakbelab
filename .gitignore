@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+build/
+
+# Packer / OVA
+ova/output-*/
+ova/packer_cache/
+*.ova
+*.ovf
+*.vmdk
+
+# Imágenes de fabricantes: nunca se suben al repositorio
+*.qcow2
+*.bin
+*.iol
+images/
+
+# Labs locales
+*.sakbe
+!spec/examples/*.sakbe
+
+# Sistema
+.DS_Store
+Thumbs.db
+.env
