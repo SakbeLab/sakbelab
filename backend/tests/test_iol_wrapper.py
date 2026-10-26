@@ -53,14 +53,21 @@ def test_wrapper_bridges_frames_and_console(tmp_path):
         frame = (
             bytes.fromhex("ffffffffffff020000000001") + b"\x88\xb5" + b"sakbe-test".ljust(46, b"\0")
         )
-        raw.send(frame)
+        # IOL binds its netio socket a moment after the wrapper is ready; like a
+        # real network, a frame sent before that is lost, so retry.
+        raw.settimeout(0.5)
         echoed = None
-        deadline = time.time() + 3
-        while time.time() < deadline:
-            data = raw.recv(2048)
-            if data[: len(frame)] == frame and data is not None:
-                echoed = data
-                break
+        deadline = time.time() + 5
+        while echoed is None and time.time() < deadline:
+            raw.send(frame)
+            try:
+                while True:
+                    data = raw.recv(2048)
+                    if data[: len(frame)] == frame:
+                        echoed = data
+                        break
+            except TimeoutError:
+                continue
         assert echoed is not None, "frame did not come back through the fake IOL"
         log = (tmp_path / "rx.log").read_text()
         assert "RX dst=501 src=1013 dport=16 sport=16" in log

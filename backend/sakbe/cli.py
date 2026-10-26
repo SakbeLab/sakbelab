@@ -1,94 +1,158 @@
-"""`sakbe` command line interface. It talks to the SakbeLab API (API first)."""
+"""`sakbe` command line interface. It talks to the SakbeLab API (API first).
+
+sakbe [--server URL] list
+sakbe deploy lab.yml            crear (o reemplazar) y encender
+sakbe start|stop LAB [NODO]
+sakbe destroy LAB [--delete]
+sakbe export LAB [-o archivo.sakbe|.yml]
+sakbe import archivo.sakbe|.yml [--name NUEVO]
+sakbe templates | images
+sakbe upload imagen.qcow2|.bin|.tar
+"""
 
 import argparse
-import json
 import os
 import sys
-import urllib.error
-import urllib.parse
-import urllib.request
+from pathlib import Path
 
 from sakbe import __version__
-
-DEFAULT_SERVER = os.environ.get("SAKBE_SERVER", "http://localhost")
-
-
-def _call(
-    server: str,
-    method: str,
-    path: str,
-    body: bytes | None = None,
-    content_type: str = "application/json",
-):
-    req = urllib.request.Request(server.rstrip("/") + "/api/v1" + path, data=body, method=method)
-    if body is not None:
-        req.add_header("Content-Type", content_type)
-    try:
-        with urllib.request.urlopen(req, timeout=300) as res:
-            raw = res.read()
-    except urllib.error.HTTPError as exc:
-        try:
-            detail = json.loads(exc.read()).get("detail")
-        except (ValueError, AttributeError):
-            detail = exc.reason
-        sys.exit(f"Error: {detail}")
-    except urllib.error.URLError as exc:
-        sys.exit(f"No se pudo conectar con {server}: {exc.reason}")
-    return json.loads(raw) if raw else None
+from sakbe.client import DEFAULT_SERVER, Client, SakbeError, quote
 
 
 def _print_lab(lab: dict) -> None:
-    print(f"{lab['name']}: {lab['state']}")
-    for n in lab["nodes"]:
-        print(f"  {n['name']:<12} {n['template']:<14} {n['state']}")
+    print(f"{lab['name']}: {lab.get('state', '')}")
+    for n in lab.get("nodes", []):
+        print(f"  {n['name']:<14} {n['template']:<18} {n['state']}")
+    for e in lab.get("errors", []) or []:
+        print(f"  ! {e}")
+    for w in lab.get("warnings", []) or []:
+        print(f"  ! {w}")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(prog="sakbe", description="SakbeLab CLI")
+def _kind(path: Path) -> str | None:
+    name = path.name.lower()
+    if name.endswith((".qcow2", ".img", ".vmdk", ".iso")):
+        return "qemu"
+    if name.endswith((".tar", ".tar.gz", ".tgz")):
+        return "docker"
+    if name.endswith((".bin", ".iol")) or "." not in name:
+        return "iol"
+    return None
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(prog="sakbe", description="SakbeLab: emulador de redes")
     parser.add_argument("--version", action="version", version=f"sakbe {__version__}")
-    parser.add_argument("--server", default=DEFAULT_SERVER, help=f"API (default {DEFAULT_SERVER})")
+    parser.add_argument(
+        "--server",
+        default=os.environ.get("SAKBE_SERVER", DEFAULT_SERVER),
+        help=f"dirección de SakbeLab (default {DEFAULT_SERVER} o $SAKBE_SERVER)",
+    )
     sub = parser.add_subparsers(dest="command")
-    p = sub.add_parser("deploy", help="Crear un lab desde YAML y encenderlo")
+    sub.add_parser("list", help="listar labs")
+    p = sub.add_parser("deploy", help="crear un lab desde YAML y encenderlo")
     p.add_argument("file")
-    p.add_argument("--replace", action="store_true", help="Reemplazar si ya existe (apagado)")
-    p = sub.add_parser("destroy", help="Apagar un lab")
-    p.add_argument("name")
-    p.add_argument("--delete", action="store_true", help="Además, borrar su definición")
-    sub.add_parser("list", help="Listar labs")
-    p = sub.add_parser("export", help="Guardar la configuración actual y exportar el lab a YAML")
-    p.add_argument("name")
-    p.add_argument("-o", "--output", help="Archivo de salida (default <name>.yml)")
-    args = parser.parse_args()
-    s = args.server
+    p.add_argument("--no-start", action="store_true", help="crear sin encender")
+    for cmd, text in (("start", "encender un lab o un nodo"), ("stop", "apagar un lab o un nodo")):
+        p = sub.add_parser(cmd, help=text)
+        p.add_argument("lab")
+        p.add_argument("node", nargs="?")
+    p = sub.add_parser("destroy", help="apagar un lab (y opcionalmente borrarlo)")
+    p.add_argument("lab")
+    p.add_argument("--delete", action="store_true", help="además, borrar su definición")
+    p = sub.add_parser("export", help="exportar un lab a .sakbe o .yml")
+    p.add_argument("lab")
+    p.add_argument("-o", "--output", help="archivo de salida (default <lab>.sakbe)")
+    p.add_argument(
+        "--save", action="store_true", help="guardar antes la configuración de los equipos"
+    )
+    p.add_argument("--author", default="")
+    p = sub.add_parser("import", help="importar un .sakbe o .yml")
+    p.add_argument("file")
+    p.add_argument("--name", help="importar con otro nombre")
+    sub.add_parser("templates", help="listar plantillas")
+    sub.add_parser("images", help="listar imágenes")
+    p = sub.add_parser("upload", help="subir una imagen (QCOW2, IOL o tar de Docker)")
+    p.add_argument("file")
+    args = parser.parse_args(argv)
+    c = Client(args.server)
 
-    if args.command == "deploy":
-        with open(args.file, "rb") as fh:
-            text = fh.read()
-        query = "?replace=true" if args.replace else ""
-        lab = _call(s, "POST", f"/labs/yaml{query}", text, "text/plain")
-        print(f"Lab '{lab['name']}' creado. Encendiendo...")
-        _print_lab(_call(s, "POST", f"/labs/{urllib.parse.quote(lab['name'])}/start"))
-    elif args.command == "destroy":
-        name = urllib.parse.quote(args.name)
-        if args.delete:
-            _call(s, "DELETE", f"/labs/{name}")
-            print(f"Lab '{args.name}' apagado y eliminado.")
-        else:
-            _print_lab(_call(s, "POST", f"/labs/{name}/stop"))
-    elif args.command == "list":
-        labs = _call(s, "GET", "/labs")
+    try:
+        run(args, c, parser)
+    except SakbeError as exc:
+        sys.exit(f"Error: {exc}")
+    except OSError as exc:
+        sys.exit(f"Error: {exc}")
+
+
+def run(args, c: Client, parser) -> None:
+    cmd = args.command
+    if cmd == "list":
+        labs = c.get("/labs")
         if not labs:
             print("No hay labs.")
         for lab in labs:
-            _print_lab(lab)
-    elif args.command == "export":
-        name = urllib.parse.quote(args.name)
-        _call(s, "POST", f"/labs/{name}/save")
-        url = s.rstrip("/") + f"/api/v1/labs/{name}/yaml"
-        out = args.output or f"{args.name}.yml"
-        with urllib.request.urlopen(url) as res, open(out, "wb") as fh:
-            fh.write(res.read())
+            print(
+                f"{lab['name']:<24} {lab['nodes']} equipos, {lab['running']} encendidos  {lab['description']}"
+            )
+    elif cmd == "deploy":
+        from sakbe.sdk import Lab
+
+        lab = Lab.from_yaml(args.file, server=args.server)
+        errors = lab.deploy(start=not args.no_start)
+        _print_lab({**c.get(f"/labs/{quote(lab.name)}"), "errors": errors})
+    elif cmd in ("start", "stop"):
+        path = f"/labs/{quote(args.lab)}"
+        if args.node:
+            path += f"/nodes/{quote(args.node)}"
+        _print_lab(c.post(f"{path}/{cmd}"))
+    elif cmd == "destroy":
+        if args.delete:
+            c.delete(f"/labs/{quote(args.lab)}")
+            print(f"Lab '{args.lab}' apagado y eliminado.")
+        else:
+            _print_lab(c.post(f"/labs/{quote(args.lab)}/stop"))
+    elif cmd == "export":
+        if args.save:
+            c.post(f"/labs/{quote(args.lab)}/save")
+        out = Path(args.output or f"{args.lab}.sakbe")
+        kind = "yaml" if out.suffix in (".yml", ".yaml") else "sakbe"
+        data = c.get(f"/labs/{quote(args.lab)}/{kind}", params={"author": args.author or None})
+        out.write_bytes(data if isinstance(data, bytes) else str(data).encode())
         print(f"Exportado a {out}")
+    elif cmd == "import":
+        blob = Path(args.file).read_bytes()
+        lab = c.request(
+            "POST",
+            "/labs/import",
+            raw=blob,
+            content_type="application/octet-stream",
+            params={"name": args.name},
+        )
+        _print_lab(lab)
+    elif cmd == "templates":
+        for t in c.get("/templates"):
+            state = "" if t["available"] else f"  ({t['unavailable_reason']})"
+            print(
+                f"{t['id']:<22} {t['name']:<22} {t['engine']:<7} {len(t['interface_names'])} interfaces{state}"
+            )
+    elif cmd == "images":
+        for i in c.get("/images"):
+            sha = (i["sha256"] or "")[:12]
+            print(f"{i['kind']:<7} {i['reference'] or i['name']:<50} {sha}")
+    elif cmd == "upload":
+        path = Path(args.file)
+        kind = _kind(path)
+        if not kind:
+            sys.exit("Formato no reconocido: use .qcow2, .img, .vmdk, .iso, .bin o .tar")
+        with path.open("rb") as fh:
+            info = c.request(
+                "PUT",
+                f"/images/{kind}/{quote(path.name)}",
+                raw=fh,
+                content_type="application/octet-stream",
+            )
+        print(f"Cargada {info['name']} ({kind}), SHA256 {info['sha256']}")
     else:
         parser.print_help()
 

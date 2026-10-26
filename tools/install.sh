@@ -48,7 +48,7 @@ say "Instalando el backend"
 python3 -m venv "$PREFIX/venv"
 "$PREFIX/venv/bin/pip" install -q --upgrade pip
 "$PREFIX/venv/bin/pip" install -q --force-reinstall --no-deps "$PREFIX/src/backend"
-"$PREFIX/venv/bin/pip" install -q "$PREFIX/src/backend"
+"$PREFIX/venv/bin/pip" install -q "$PREFIX/src/backend[server]"
 ln -sf "$PREFIX/venv/bin/sakbe" /usr/local/bin/sakbe
 
 say "Copiando plantillas y ejemplos"

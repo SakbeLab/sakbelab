@@ -5,7 +5,7 @@
 
 Los sakbé eran las calzadas blancas que conectaban las ciudades mayas. SakbeLab conecta tus equipos virtuales.
 
-> Estado: Fase 0 (prueba de concepto). Ya se pueden crear labs con routers FRR, conectarlos y usarlos desde la consola web. Ver [cómo probarla](docs/fase0.md).
+> Estado: versión 0.1 en desarrollo. Editor web estilo GNS3, routers FRR, switch Ethernet integrado, Cisco IOL, archivos `.sakbe` y SDK de Python. Ver la [documentación](docs/README.md).
 
 ## Qué es
 
@@ -23,11 +23,11 @@ SakbeLab es una plataforma de emulación de redes pensada para estudiantes e ins
 ```python
 from sakbe import Lab
 
-lab = Lab("ospf-area0", server="192.168.56.101", token="...")
+lab = Lab("ospf-area0", server="http://192.168.56.101")
 
-r1 = lab.node("R1", template="cisco-iol-l3", ram=512)
-r2 = lab.node("R2", template="cisco-iol-l3", ram=512)
-lab.link(r1["Ethernet0/0"], r2["Ethernet0/0"])
+r1 = lab.node("R1", template="frr")
+r2 = lab.node("R2", template="frr")
+lab.link(r1["eth1"], r2["eth1"])
 
 lab.deploy()
 lab.export("ospf-area0.sakbe")
