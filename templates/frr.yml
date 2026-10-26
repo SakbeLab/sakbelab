@@ -3,6 +3,8 @@ id: frr
 name: Router FRR
 vendor: FRRouting
 engine: docker
+category: router
+name_prefix: R
 image: quay.io/frrouting/frr:10.2.1
 icon: router
 defaults:

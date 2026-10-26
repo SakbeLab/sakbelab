@@ -11,6 +11,7 @@ from sakbe import util
 from sakbe.engines.base import Engine
 from sakbe.images.templates import Template
 from sakbe.labs.models import Node
+from sakbe.network import links
 
 FRR_DAEMONS = """\
 zebra=yes
@@ -125,9 +126,10 @@ class DockerEngine(Engine):
             return "absent"
         return "running" if out == "running" else "stopped"
 
-    def pid(self, lab, node):
-        out = util.run(["docker", "inspect", "-f", "{{.State.Pid}}", container_name(lab, node)])
-        return int(out.strip())
+    def attach(self, lab, node, iface, bridge, host_if):
+        name = container_name(lab, node)
+        pid = int(util.run(["docker", "inspect", "-f", "{{.State.Pid}}", name]).strip())
+        links.veth_into_netns(pid, iface, bridge, host_if)
 
     def console_command(self, lab, node, template):
         return ["docker", "exec", "-it", container_name(lab, node), *template.console.command]

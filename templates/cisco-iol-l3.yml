@@ -4,6 +4,8 @@ id: cisco-iol-l3
 name: Cisco IOL L3
 vendor: Cisco
 engine: iol
+category: router
+name_prefix: R
 icon: router
 defaults:
   ram: 512

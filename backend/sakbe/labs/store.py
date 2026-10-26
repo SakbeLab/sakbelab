@@ -7,7 +7,7 @@ import yaml
 from sakbe import settings
 from sakbe.labs.models import Lab
 
-_NODE_FIELDS = ("template", "image", "ram", "cpus", "x", "y", "config")
+_NODE_FIELDS = ("template", "image", "ram", "cpus", "x", "y", "locked", "config")
 
 
 class _Literal(str):
@@ -26,7 +26,9 @@ def lab_from_dict(data: dict) -> Lab:
     data = dict(data)
     nodes = data.get("nodes") or []
     if isinstance(nodes, dict):
-        data["nodes"] = [{"name": name, **(attrs or {})} for name, attrs in nodes.items()]
+        nodes = [{"name": name, **(attrs or {})} for name, attrs in nodes.items()]
+    data["nodes"] = nodes
+    data["notes"] = data.get("notes") or []
     links = data.get("links") or []
     data["links"] = [
         {"a": link[0], "b": link[1]} if isinstance(link, (list, tuple)) else link for link in links
@@ -49,7 +51,7 @@ def lab_to_yaml(lab: Lab) -> str:
         attrs = {}
         for f in _NODE_FIELDS:
             value = getattr(n, f)
-            if value in (None, "") or (f in ("x", "y") and value == 0):
+            if value in (None, "", False) or (f in ("x", "y") and value == 0):
                 continue
             if f == "config":
                 value = _Literal(value.rstrip() + "\n")
@@ -63,6 +65,11 @@ def lab_to_yaml(lab: Lab) -> str:
         "nodes": nodes,
         "links": [[link.a, link.b] for link in lab.links],
     }
+    if lab.notes:
+        doc["notes"] = [
+            {k: v for k, v in note.model_dump().items() if v not in (False, "") or k == "text"}
+            for note in lab.notes
+        ]
     return yaml.safe_dump(doc, sort_keys=False, allow_unicode=True)
 
 

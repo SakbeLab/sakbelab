@@ -21,7 +21,7 @@ class IOLEngine(Engine):
     def status(self, lab, node):
         return "absent"
 
-    def pid(self, lab, node):
+    def attach(self, lab, node, iface, bridge, host_if):
         raise EngineUnavailable(_MSG)
 
     def console_command(self, lab, node, template):

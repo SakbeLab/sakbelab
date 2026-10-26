@@ -3,6 +3,8 @@ id: linux-host
 name: Host Linux
 vendor: Alpine
 engine: docker
+category: end-device
+name_prefix: PC
 image: alpine:3.20
 icon: pc
 defaults:

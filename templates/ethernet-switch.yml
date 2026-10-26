@@ -1,0 +1,12 @@
+# Switch Ethernet integrado (no administrable), como el de GNS3. No necesita imagen.
+id: ethernet-switch
+name: Switch Ethernet
+vendor: SakbeLab
+engine: switch
+category: switch
+icon: switch
+name_prefix: SW
+interfaces:
+  count: 8
+  naming: "e{index}"
+  start: 0

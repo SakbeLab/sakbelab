@@ -1,4 +1,4 @@
-"""Common interface for every emulation engine (Docker, IOL, QEMU)."""
+"""Common interface for every emulation engine (Docker, switch, IOL, QEMU)."""
 
 from abc import ABC, abstractmethod
 
@@ -11,10 +11,10 @@ class EngineUnavailable(RuntimeError):
 
 
 class Engine(ABC):
-    """An engine creates, destroys and exposes the console of a node.
+    """An engine creates, destroys, wires and exposes the console of a node.
 
-    Every node runs inside its own Linux network namespace; links are wired
-    by sakbe.network using the PID returned by `pid()`.
+    Every link is a Linux bridge on the host. `attach` connects one node
+    interface to that bridge through a host-side device named `host_if`.
     """
 
     name: str
@@ -32,12 +32,15 @@ class Engine(ABC):
         """Return 'running', 'stopped' or 'absent'."""
 
     @abstractmethod
-    def pid(self, lab: str, node: Node) -> int:
-        """PID of a process inside the node's network namespace."""
+    def attach(self, lab: str, node: Node, iface: str, bridge: str, host_if: str) -> None:
+        """Connect `iface` of a running node to `bridge`. Must be idempotent."""
 
     @abstractmethod
     def console_command(self, lab: str, node: Node, template: Template) -> list[str]:
         """Host command that opens the node console when run on a PTY."""
+
+    def has_console(self) -> bool:
+        return True
 
     def save_config(self, lab: str, node: Node) -> str | None:
         """Return the node's running configuration, if the engine supports it."""

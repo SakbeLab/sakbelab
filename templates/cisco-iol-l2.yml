@@ -1,0 +1,19 @@
+# Plantilla de ejemplo. La imagen NO se incluye: cada usuario carga la suya.
+id: cisco-iol-l2
+name: Cisco IOL L2
+vendor: Cisco
+engine: iol
+category: switch
+icon: l3switch
+name_prefix: SW
+defaults:
+  ram: 512
+  cpus: 1
+interfaces:
+  count: 8
+  naming: "Ethernet{slot}/{port}"
+  ports_per_slot: 4
+console:
+  type: telnet
+config:
+  day0: nvram

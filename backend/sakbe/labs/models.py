@@ -1,5 +1,6 @@
 """Lab data model shared by the API, the CLI, the SDK and the .sakbe format."""
 
+import hashlib
 import re
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -17,6 +18,7 @@ class Node(BaseModel):
     config: str | None = Field(default=None, description="Day-0 configuration")
     x: float = 0
     y: float = 0
+    locked: bool = False
 
     @field_validator("name")
     @classmethod
@@ -37,6 +39,17 @@ class Link(BaseModel):
             raise ValueError(f"endpoint '{v}' must look like NODE:INTERFACE")
         return v
 
+    def id(self, lab: str) -> str:
+        return hashlib.sha1(f"{lab}|{self.a}|{self.b}".encode()).hexdigest()[:8]
+
+
+class Note(BaseModel):
+    id: str
+    text: str = ""
+    x: float = 0
+    y: float = 0
+    locked: bool = False
+
 
 def split_endpoint(endpoint: str) -> tuple[str, str]:
     node, iface = endpoint.split(":", 1)
@@ -48,6 +61,7 @@ class LabCreate(BaseModel):
     description: str = ""
     nodes: list[Node] = []
     links: list[Link] = []
+    notes: list[Note] = []
 
     @field_validator("name")
     @classmethod
@@ -77,6 +91,28 @@ class LabCreate(BaseModel):
             if n.name == name:
                 return n
         raise KeyError(name)
+
+    def link(self, link_id: str) -> Link:
+        for link in self.links:
+            if link.id(self.name) == link_id:
+                return link
+        raise KeyError(link_id)
+
+    def links_of(self, node_name: str) -> list[Link]:
+        return [
+            link
+            for link in self.links
+            if split_endpoint(link.a)[0] == node_name or split_endpoint(link.b)[0] == node_name
+        ]
+
+    def used_interfaces(self, node_name: str) -> set[str]:
+        used = set()
+        for link in self.links:
+            for ep in (link.a, link.b):
+                n, iface = split_endpoint(ep)
+                if n == node_name:
+                    used.add(iface)
+        return used
 
 
 class Lab(LabCreate):
