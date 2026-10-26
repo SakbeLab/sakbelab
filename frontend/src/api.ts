@@ -120,6 +120,17 @@ export const api = {
   lab: (name: string) => call<Lab>("GET", `/labs/${enc(name)}`),
   createLab: (name: string, description: string) => call<Lab>("POST", "/labs", { name, description }),
   importYaml: (text: string) => call<Lab>("POST", "/labs/yaml", text, true),
+  importLab: async (file: File, name?: string): Promise<Lab & { warnings: string[] }> => {
+    const q = name ? `?name=${enc(name)}` : "";
+    const res = await fetch(`${BASE}/labs/import${q}`, { method: "POST", body: file });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(typeof body.detail === "string" ? body.detail : `Error ${res.status}`);
+      (err as Error & { status?: number }).status = res.status;
+      throw err;
+    }
+    return body;
+  },
   deleteLab: (name: string) => call<null>("DELETE", `/labs/${enc(name)}`),
   labAction: (name: string, action: "start" | "stop") => call<Lab>("POST", `/labs/${enc(name)}/${action}`),
   saveConfigs: (name: string) => call<{ saved: string[] }>("POST", `/labs/${enc(name)}/save`),

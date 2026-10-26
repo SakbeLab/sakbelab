@@ -67,7 +67,7 @@ def ensure_bridge(name: str) -> None:
         ],
         check=False,
     )
-    # Forward link-local protocols (LLDP, LACP...) like a real cable would.
+    # Forward LLDP frames (01:80:c2:00:00:0e) like a real cable would.
     util.run(["ip", "link", "set", name, "type", "bridge", "group_fwd_mask", "0x4000"], check=False)
     util.run(["ip", "link", "set", name, "up"])
 

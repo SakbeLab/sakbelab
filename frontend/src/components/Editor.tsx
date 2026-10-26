@@ -21,6 +21,7 @@ type MenuState =
   | { kind: "link"; x: number; y: number; id: string; label: string }
   | { kind: "note"; x: number; y: number; id: string; locked: boolean }
   | { kind: "pane"; x: number; y: number; fx: number; fy: number }
+  | { kind: "export"; x: number; y: number }
   | null;
 
 type Pending = { node: string; iface: string } | null;
@@ -326,9 +327,10 @@ export function Editor({ labName, templates, onExit, onLibrary, notify }: {
           <Icon name="fit" />
         </button>
         <div className="spacer" />
-        <a className="tool" href={`/api/v1/labs/${encodeURIComponent(labName)}/yaml`} title="Descargar el lab en YAML">
+        <button className="tool" title="Exportar el lab"
+          onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setMenu({ kind: "export", x: r.left, y: r.bottom + 4 }); }}>
           <Icon name="download" /><span className="label optional">Exportar</span>
-        </a>
+        </button>
         <button className="tool" onClick={onLibrary} title="Imágenes y plantillas">
           <Icon name="library" /><span className="label optional">Imágenes y plantillas</span>
         </button>
@@ -454,6 +456,18 @@ export function Editor({ labName, templates, onExit, onLibrary, notify }: {
           { label: "Encender todo", icon: "play", disabled: !anyStopped, onClick: () => run("start", () => api.labAction(labName, "start")) },
           { label: "Apagar todo", icon: "stop", disabled: !anyRunning, onClick: () => run("stop", () => api.labAction(labName, "stop")) },
           { label: "Ajustar vista", icon: "fit", onClick: () => flow.fitView({ padding: 0.3, maxZoom: 1.2 }) },
+        ]} />
+      )}
+      {menu?.kind === "export" && (
+        <Menu x={menu.x} y={menu.y} title="Exportar" onClose={() => setMenu(null)} items={[
+          {
+            label: "Lab completo (.sakbe)", icon: "file",
+            onClick: () => { location.href = `/api/v1/labs/${encodeURIComponent(labName)}/sakbe`; },
+          },
+          {
+            label: "Topología en YAML", icon: "download",
+            onClick: () => { location.href = `/api/v1/labs/${encodeURIComponent(labName)}/yaml`; },
+          },
         ]} />
       )}
       {picker && (

@@ -7,7 +7,7 @@ import threading
 import uuid
 from pathlib import Path
 
-from fastapi import Body, FastAPI, HTTPException, WebSocket
+from fastapi import Body, FastAPI, HTTPException, Request, WebSocket
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ValidationError
@@ -18,6 +18,7 @@ from sakbe.engines import EngineUnavailable
 from sakbe.images import templates
 from sakbe.labs import runtime, store
 from sakbe.labs.models import Lab, LabCreate, Link, Node, Note, split_endpoint
+from sakbe.package import archive
 from sakbe.util import CommandError
 
 app = FastAPI(title="SakbeLab API", version=__version__)
@@ -248,6 +249,42 @@ def export_lab_yaml(name: str):
         media_type="text/yaml",
         headers={"Content-Disposition": f'attachment; filename="{name}.yml"'},
     )
+
+
+@app.get("/api/v1/labs/{name}/sakbe")
+def export_lab_sakbe(name: str, author: str = ""):
+    lab = _load(name)
+    return Response(
+        archive.export_lab(lab, author=author),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{name}.sakbe"'},
+    )
+
+
+@app.post("/api/v1/labs/import", status_code=201)
+async def import_lab(request: Request, name: str | None = None, replace: bool = False) -> dict:
+    """Import a .sakbe file (ZIP) or a YAML lab sent as the raw request body."""
+    blob = await request.body()
+    try:
+        with _write_lock:
+            if blob[:2] == b"PK":
+                lab, warnings = archive.import_lab(blob, rename=name, replace=replace)
+            else:
+                lab = store.lab_from_yaml(blob.decode("utf-8"))
+                if name:
+                    lab = Lab.model_validate({**lab.model_dump(), "name": name})
+                if store.exists(lab.name) and not replace:
+                    raise FileExistsError(lab.name)
+                store.save(lab)
+                warnings = []
+    except FileExistsError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Ya existe un lab llamado '{exc.args[0]}'. Importalo con otro nombre.",
+        ) from None
+    except (archive.ArchiveError, ValidationError, ValueError, UnicodeDecodeError) as exc:
+        _fail(exc, 422)
+    return {**_view(lab), "warnings": warnings}
 
 
 @app.delete("/api/v1/labs/{name}", status_code=204)

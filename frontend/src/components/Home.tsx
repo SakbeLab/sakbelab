@@ -23,13 +23,20 @@ export function Home({ onOpen, notify }: { onOpen: (name: string) => void; notif
     }
   };
 
-  const importFile = async (f: File) => {
+  const importFile = async (f: File, rename?: string) => {
     try {
-      const lab = await api.importYaml(await f.text());
+      const lab = await api.importLab(f, rename);
+      lab.warnings.forEach((w) => notify(w, w.startsWith("Falta") || w.includes("distinta")));
       notify(`Lab ${lab.name} importado.`);
       onOpen(lab.name);
     } catch (err) {
-      notify((err as Error).message, true);
+      const e = err as Error & { status?: number };
+      if (e.status === 409) {
+        const other = prompt(`${e.message}\n\nNuevo nombre para el lab importado:`);
+        if (other) importFile(f, other.trim().toLowerCase().replace(/\s+/g, "-"));
+        return;
+      }
+      notify(e.message, true);
     }
   };
 
@@ -73,10 +80,10 @@ export function Home({ onOpen, notify }: { onOpen: (name: string) => void; notif
 
         <h2>Importar</h2>
         <button className="btn" onClick={() => file.current?.click()}>
-          <Icon name="upload" size={16} /> Importar lab desde YAML
+          <Icon name="upload" size={16} /> Importar lab (.sakbe o YAML)
         </button>
-        <input ref={file} type="file" accept=".yml,.yaml" hidden
-          onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])} />
+        <input ref={file} type="file" accept=".sakbe,.yml,.yaml" hidden
+          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) importFile(f); }} />
       </div>
     </main>
   );
