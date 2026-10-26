@@ -16,7 +16,7 @@ def test_templates(client):
     assert ids["ethernet-switch"]["interface_names"][:2] == ["e0", "e1"]
     assert ids["cisco-iol-l3"]["interface_names"][:2] == ["Ethernet0/0", "Ethernet0/1"]
     assert ids["cisco-iol-l2"]["interface_names"][4] == "Ethernet1/0"
-    assert ids["cisco-iol-l3"]["available"] is False
+    assert ids["cisco-iol-l3"]["available"] is True
 
 
 def test_yaml_lab_lifecycle(client):

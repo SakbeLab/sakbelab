@@ -27,7 +27,6 @@ WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 _write_lock = threading.RLock()
 
 PLANNED_ENGINES = {
-    "iol": "El motor IOL está en desarrollo (MVP 0.1).",
     "qemu": "El motor QEMU llega en la versión 0.2.",
 }
 
@@ -291,6 +290,8 @@ async def import_lab(request: Request, name: str | None = None, replace: bool = 
 def delete_lab(name: str) -> None:
     lab = _load(name)
     runtime.stop(lab)
+    for node in lab.nodes:
+        runtime.wipe_node(lab, node.name)
     store.delete(name)
 
 
@@ -421,6 +422,7 @@ def delete_node(name: str, node_name: str) -> dict:
         node = _node(lab, node_name)
         _check_unlocked(node)
         runtime.stop_node(lab, node_name)
+        runtime.wipe_node(lab, node_name)
         for link in lab.links_of(node_name):
             runtime.unwire_link(lab, link)
         lab.links = [link for link in lab.links if link not in lab.links_of(node_name)]

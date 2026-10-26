@@ -26,6 +26,16 @@ apt-get update -q
 apt-get install -y -q docker.io iproute2 iptables util-linux git python3 python3-venv curl ca-certificates
 systemctl enable --now docker
 
+say "Preparando compatibilidad con Cisco IOL"
+# IOL clásico es un binario de 32 bits; estas librerías no molestan si no lo usás.
+if dpkg --add-architecture i386 && apt-get update -q; then
+  apt-get install -y -q libc6:i386 libstdc++6:i386 >/dev/null 2>&1 || true
+  apt-get install -y -q libssl3t64:i386 >/dev/null 2>&1 || apt-get install -y -q libssl3:i386 >/dev/null 2>&1 || true
+  if [ -e /usr/lib/i386-linux-gnu/libcrypto.so.3 ] && [ ! -e /usr/lib/i386-linux-gnu/libcrypto.so.4 ]; then
+    ln -s libcrypto.so.3 /usr/lib/i386-linux-gnu/libcrypto.so.4
+  fi
+fi
+
 say "Descargando SakbeLab ($BRANCH)"
 if [ -d "$PREFIX/src/.git" ]; then
   git -C "$PREFIX/src" fetch --depth 1 origin "$BRANCH"
@@ -43,10 +53,19 @@ ln -sf "$PREFIX/venv/bin/sakbe" /usr/local/bin/sakbe
 
 say "Copiando plantillas y ejemplos"
 mkdir -p "$PREFIX/templates" "$PREFIX/labs" "$PREFIX/examples"
-for f in "$PREFIX"/src/templates/*.yml; do
-  dest="$PREFIX/templates/$(basename "$f")"
-  [ -e "$dest" ] || cp "$f" "$dest"
-done
+# Las plantillas incluidas se actualizan, conservando la imagen que haya elegido el usuario.
+"$PREFIX/venv/bin/python" - "$PREFIX/src/templates" "$PREFIX/templates" <<'PY'
+import pathlib, sys, yaml
+src, dst = map(pathlib.Path, sys.argv[1:3])
+for f in sorted(src.glob("*.yml")):
+    new = yaml.safe_load(f.read_text())
+    target = dst / f.name
+    if target.exists():
+        old = yaml.safe_load(target.read_text()) or {}
+        if old.get("image"):
+            new["image"] = old["image"]
+    target.write_text(yaml.safe_dump(new, sort_keys=False, allow_unicode=True))
+PY
 cp "$PREFIX"/src/examples/*.yml "$PREFIX/examples/"
 
 say "Descargando la imagen del router FRR"

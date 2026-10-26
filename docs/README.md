@@ -4,6 +4,7 @@
 - [Prueba de la Fase 0](fase0.md): instalación en una VM y primer lab
 - [Formato .sakbe v1](../spec/sakbe-format-v1.md)
 - [Imágenes gratuitas e importación](imagenes-gratuitas.md)
+- [Cisco IOL](iol.md)
 
 ## Desarrollo del backend
 

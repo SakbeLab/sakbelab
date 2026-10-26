@@ -127,6 +127,14 @@ def stop_node(lab: Lab, node_name: str) -> None:
             net.delete(net.bridge_name(lid))
 
 
+def wipe_node(lab: Lab, node_name: str) -> None:
+    """Remove persistent data of a node that is being deleted."""
+    node = lab.node(node_name)
+    t = templates.load_all().get(node.template)
+    if t:
+        engines.get(t.engine).wipe(lab.name, node)
+
+
 def start(lab: Lab) -> list[str]:
     """Start every node. Returns errors as text; one failing node does not stop the rest."""
     validate_interfaces(lab)

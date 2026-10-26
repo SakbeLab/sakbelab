@@ -45,3 +45,7 @@ class Engine(ABC):
     def save_config(self, lab: str, node: Node) -> str | None:
         """Return the node's running configuration, if the engine supports it."""
         return None
+
+    def wipe(self, lab: str, node: Node) -> None:
+        """Delete persistent node data (disks, NVRAM) when the node is deleted."""
+        return
