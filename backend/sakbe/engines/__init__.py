@@ -1,9 +1,12 @@
 from sakbe.engines.base import Engine, EngineUnavailable
 from sakbe.engines.docker import DockerEngine
 from sakbe.engines.iol import IOLEngine
+from sakbe.engines.qemu import QemuEngine
 from sakbe.engines.switch import SwitchEngine
 
-ENGINES: dict[str, Engine] = {e.name: e for e in (DockerEngine(), IOLEngine(), SwitchEngine())}
+ENGINES: dict[str, Engine] = {
+    e.name: e for e in (DockerEngine(), IOLEngine(), QemuEngine(), SwitchEngine())
+}
 
 
 def get(name: str) -> Engine:

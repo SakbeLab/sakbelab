@@ -7,6 +7,7 @@
 - [Formato .sakbe v1](../spec/sakbe-format-v1.md)
 - [Imágenes gratuitas e importación](imagenes-gratuitas.md)
 - [Cisco IOL](iol.md)
+- [Imágenes QEMU (QCOW2)](qemu.md)
 - [Labs como código: SDK de Python, YAML y CLI](labs-como-codigo.md)
 
 ## Desarrollo del backend

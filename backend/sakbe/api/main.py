@@ -3,6 +3,7 @@
 API first: the web editor, the CLI and the SDK all go through these endpoints.
 """
 
+import shutil
 import threading
 import uuid
 from pathlib import Path
@@ -26,17 +27,16 @@ app.include_router(images_api.router)
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 _write_lock = threading.RLock()
 
-PLANNED_ENGINES = {
-    "qemu": "El motor QEMU llega en la versión 0.2.",
-}
-
 
 def engine_available(engine: str) -> tuple[bool, str]:
-    if engine in PLANNED_ENGINES:
-        return False, PLANNED_ENGINES[engine]
-    if engine in engines.ENGINES:
-        return True, ""
-    return False, "Motor desconocido."
+    if engine not in engines.ENGINES:
+        return False, "Motor desconocido."
+    if engine == "qemu" and shutil.which("qemu-system-x86_64") is None:
+        return (
+            False,
+            "QEMU no está instalado en el servidor (apt-get install qemu-system qemu-utils).",
+        )
+    return True, ""
 
 
 # ---------------------------------------------------------------- helpers

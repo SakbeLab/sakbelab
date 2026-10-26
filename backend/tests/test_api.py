@@ -110,7 +110,10 @@ def test_iol_engine_not_available_yet(client):
     assert "IOL" in r.json()["errors"][0]
 
 
-def test_create_template(client):
+def test_create_template(client, monkeypatch):
+    from sakbe.api import main
+
+    monkeypatch.setattr(main.shutil, "which", lambda name: None)  # qemu not installed
     tpl = {
         "id": "fortigate-7-2",
         "name": "FortiGate 7.2",
@@ -127,6 +130,7 @@ def test_create_template(client):
     assert r.status_code == 201, r.text
     assert r.json()["interface_names"][0] == "port1"
     assert r.json()["available"] is False
+    assert "QEMU no está instalado" in r.json()["unavailable_reason"]
     assert client.post("/api/v1/templates", json=tpl).status_code == 409
     assert client.delete("/api/v1/templates/fortigate-7-2").status_code == 204
 

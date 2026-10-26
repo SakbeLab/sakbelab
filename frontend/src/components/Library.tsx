@@ -332,7 +332,44 @@ function TemplateForm({ initial, images, isNew, onCancel, onSaved, notify }: {
         </label>
       </div>
       {t.engine === "qemu" && (
-        <p className="notice">Las plantillas QEMU ya se pueden preparar; los equipos QEMU arrancan a partir de la versión 0.2.</p>
+        <div className="row">
+          <label className="field">
+            <span>Tarjeta de red</span>
+            <select value={(t.config?.nic as string) ?? "virtio-net-pci"}
+              onChange={(e) => set({ config: { ...t.config, nic: e.target.value } })}>
+              <option value="virtio-net-pci">virtio (recomendada)</option>
+              <option value="e1000">e1000 (Intel, compatible)</option>
+              <option value="e1000e">e1000e</option>
+              <option value="vmxnet3">vmxnet3 (VMware)</option>
+              <option value="rtl8139">rtl8139</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Disco</span>
+            <select value={(t.config?.disk_interface as string) ?? "virtio"}
+              onChange={(e) => set({ config: { ...t.config, disk_interface: e.target.value } })}>
+              <option value="virtio">virtio (recomendado)</option>
+              <option value="ide">IDE (compatible)</option>
+              <option value="scsi">SCSI</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Consola</span>
+            <select value={(t.config?.display as string) ?? "serial"}
+              onChange={(e) => set({ config: { ...t.config, display: e.target.value === "serial" ? undefined : e.target.value } })}>
+              <option value="serial">Serial (texto, routers y firewalls)</option>
+              <option value="vnc">Gráfica (VNC, equipos con escritorio)</option>
+            </select>
+          </label>
+          <label className="field" style={{ justifyContent: "flex-end" }}>
+            <span>Configuración inicial</span>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+              <input type="checkbox" checked={t.config?.config === "cloud-init"}
+                onChange={(e) => set({ config: { ...t.config, config: e.target.checked ? "cloud-init" : undefined } })} />
+              por cloud-init (VyOS, equipos modernos)
+            </label>
+          </label>
+        </div>
       )}
       {t.engine !== "switch" && (
         <div className="row">

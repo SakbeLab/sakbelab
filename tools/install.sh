@@ -23,7 +23,7 @@ fi
 say "Instalando dependencias del sistema"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
-apt-get install -y -q docker.io iproute2 iptables util-linux git python3 python3-venv curl ca-certificates
+apt-get install -y -q docker.io iproute2 iptables util-linux git python3 python3-venv curl ca-certificates qemu-system-x86 qemu-utils genisoimage
 systemctl enable --now docker
 
 say "Preparando compatibilidad con Cisco IOL"
