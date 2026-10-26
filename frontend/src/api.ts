@@ -42,6 +42,7 @@ export interface LabNode {
   has_console: boolean;
   engine: Engine | null;
   console_kind: "serial" | "vnc" | "none";
+  accel: "kvm" | "tcg" | null;
 }
 
 export interface LabLink {

@@ -136,3 +136,45 @@ def test_socket_paths_stay_short(tmp_path, monkeypatch):
     sock = settings.sock_dir("a" * 32, "B" * 32) / "console.sock"
     assert len(str(sock)) < 108
     assert settings.sock_dir("lab", "R1") != settings.sock_dir("lab", "R2")
+
+
+def test_ios_config_disk_and_extra_disks(tmp_path):
+    import shutil
+    import subprocess
+
+    import pytest
+
+    from sakbe.engines.qemu import QemuEngine
+    from sakbe.images.templates import Template
+    from sakbe.labs.models import Node
+
+    if not (shutil.which("mkfs.fat") and shutil.which("mcopy") and shutil.which("qemu-img")):
+        pytest.skip("needs dosfstools, mtools and qemu-utils")
+    tpl = Template(
+        id="v", name="vIOS", engine="qemu", config={"config": "ios-disk", "extra_disks": [1]}
+    )
+    node = Node(
+        name="R1",
+        template="v",
+        config="hostname R1\ninterface Gi0/0\n ip address 10.0.0.1 255.255.255.0",
+    )
+    img = QemuEngine._ios_config_disk(tmp_path, node, tpl)
+    listing = subprocess.run(
+        ["mdir", "-i", f"{img}@@{63 * 512}", "::"], check=False, capture_output=True, text=True
+    ).stdout
+    assert "IOS_CO~1 TXT" in listing or "ios_config.txt" in listing
+    text = subprocess.run(
+        ["mtype", "-i", f"{img}@@{63 * 512}", "::ios_config.txt"],
+        check=False,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert text.startswith("hostname R1") and text.rstrip().endswith("end")
+    table = subprocess.run(
+        ["sfdisk", "-d", str(img)], check=False, capture_output=True, text=True
+    ).stdout
+    assert "start=          63" in table and "type=6" in table
+    disks = QemuEngine._extra_disks(tmp_path, tpl)
+    assert [d.name for d in disks] == ["disk2.qcow2"]
+    # No config, or another config mode: no disk.
+    assert QemuEngine._ios_config_disk(tmp_path, Node(name="R2", template="v"), tpl) is None

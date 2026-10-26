@@ -119,6 +119,7 @@ class QemuEngine(Engine):
         wd = workdir(lab, node)
         wd.mkdir(parents=True, exist_ok=True)
         sk = sockets(lab, node)
+        first_boot = not (wd / "disk.qcow2").exists()
         overlay = self._overlay(lab, node, template)
         binary = self._binary(template)
 
@@ -134,6 +135,7 @@ class QemuEngine(Engine):
         ram = node.ram or template.defaults.get("ram", 1024)
         cpus = node.cpus or template.defaults.get("cpus", 1)
         accel = "kvm:tcg" if have_kvm() else "tcg"
+        (wd / "accel").write_text("kvm" if have_kvm() else "tcg")
         machine = cfg.get("machine", "pc")
         disk_if = cfg.get("disk_interface", "virtio")
         nic = cfg.get("nic", "virtio-net-pci")
@@ -174,9 +176,15 @@ class QemuEngine(Engine):
                 "-device",
                 f"{nic},netdev=net{i},mac={mac_address(lab, node, i)}",
             ]
+        for disk in self._extra_disks(wd, template):
+            cmd += ["-drive", f"file={disk},if={disk_if},cache=writeback"]
         config_iso = self._day0_iso(lab, node, template)
         if config_iso:
             cmd += ["-drive", f"file={config_iso},media=cdrom,if=ide"]
+        if first_boot:
+            ios_disk = self._ios_config_disk(wd, node, template)
+            if ios_disk:
+                cmd += ["-drive", f"file={ios_disk},if={disk_if},format=raw"]
         cmd += list(cfg.get("extra_args", []))
 
         (wd / "qemu.pid").unlink(missing_ok=True)
@@ -187,6 +195,59 @@ class QemuEngine(Engine):
             raise EngineUnavailable(
                 f"QEMU no arrancó en {node.name}: {' '.join(reason[-3:]) or 'sin detalles'}"
             )
+
+    @staticmethod
+    def _extra_disks(wd: Path, template: Template) -> list[Path]:
+        """Empty data disks some appliances need (FortiGate logs, for example)."""
+        disks = []
+        for i, size in enumerate(template.config.get("extra_disks") or [], start=2):
+            disk = wd / f"disk{i}.qcow2"
+            if not disk.exists():
+                util.run(["qemu-img", "create", "-q", "-f", "qcow2", str(disk), f"{int(size)}G"])
+            disks.append(disk)
+        return disks
+
+    @staticmethod
+    def _ios_config_disk(wd: Path, node: Node, template: Template) -> Path | None:
+        """Cisco vIOS/vIOS-L2 read ios_config.txt from a small FAT16 disk at boot.
+
+        Same idea as GNS3's IOSv_startup_config.img: a 4 MiB disk with one FAT16
+        partition. It is attached only on the first boot, so the node's initial
+        configuration applies once and `write memory` persists afterwards.
+        """
+        if not node.config or template.config.get("config") != "ios-disk":
+            return None
+        if not (shutil.which("mkfs.fat") and shutil.which("mcopy") and shutil.which("sfdisk")):
+            raise EngineUnavailable(
+                "Faltan dosfstools y mtools para armar el disco de configuración (actualizá SakbeLab)."
+            )
+        img = wd / "ios_config.img"
+        img.unlink(missing_ok=True)
+        start = 63  # first partition sector, like the classic DOS layout
+        size = 4 * 1024 * 1024
+        with img.open("wb") as fh:
+            fh.truncate(size)
+        util.run(["sfdisk", "-q", str(img)], input=f"start={start}, type=6\n")
+        blocks = (size - start * 512) // 1024
+        util.run(
+            [
+                "mkfs.fat",
+                "-F",
+                "16",
+                "-s",
+                "1",  # 1 sector per cluster: FAT16 needs >= 4085 clusters
+                "-n",
+                "IOSCONFIG",
+                "--offset",
+                str(start),
+                str(img),
+                str(blocks),
+            ]
+        )
+        cfg = wd / "ios_config.txt"
+        cfg.write_text(node.config.rstrip().replace("\r\n", "\n") + "\nend\n")
+        util.run(["mcopy", "-o", "-i", f"{img}@@{start * 512}", str(cfg), "::ios_config.txt"])
+        return img
 
     def _day0_iso(self, lab, node, template: Template) -> Path | None:
         """Build a cloud-init NoCloud ISO when the template asks for it."""
@@ -263,3 +324,10 @@ class QemuEngine(Engine):
 
     def wipe(self, lab, node):
         shutil.rmtree(workdir(lab, node), ignore_errors=True)
+
+    def accel(self, lab, node) -> str | None:
+        """'kvm' or 'tcg' (software emulation) for a running node."""
+        path = workdir(lab, node) / "accel"
+        if self.status(lab, node) != "running" or not path.exists():
+            return None
+        return path.read_text().strip()

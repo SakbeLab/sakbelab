@@ -89,6 +89,11 @@ def _view(lab: Lab) -> dict:
             and (engines.ENGINES[t.engine].has_console())
         )
         n["engine"] = t.engine if t else None
+        n["accel"] = (
+            qemu_engine.QemuEngine().accel(lab.name, lab.node(n["name"]))
+            if t and t.engine == "qemu" and n["state"] == "running"
+            else None
+        )
         n["console_kind"] = (
             "vnc"
             if t and t.engine == "qemu" and t.config.get("display") == "vnc"

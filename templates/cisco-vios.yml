@@ -1,0 +1,22 @@
+# Cisco vIOS (router). La imagen NO se incluye: elegí la tuya en Imágenes y plantillas.
+# La configuración inicial del nodo se entrega en un disco ios_config.txt, como en GNS3.
+id: cisco-vios
+name: Cisco vIOS
+vendor: Cisco
+engine: qemu
+category: router
+icon: router
+name_prefix: R
+defaults:
+  ram: 1024
+  cpus: 1
+interfaces:
+  count: 8
+  naming: "Gi0/{index}"
+  start: 0
+console:
+  type: serial
+config:
+  nic: e1000
+  disk_interface: virtio
+  config: ios-disk

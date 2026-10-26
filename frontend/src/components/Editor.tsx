@@ -436,7 +436,10 @@ export function Editor({ labName, templates, onExit, onLibrary, notify }: {
                   onContextMenu={(e) => { e.preventDefault(); setMenu({ kind: "node", x: e.clientX, y: e.clientY, node: n }); }}>
                   <span className={`dot ${n.state === "running" ? "running" : ""}`} />
                   <span>{n.name}</span>
-                  <small>{n.template_name}</small>
+                  <small title={n.accel === "tcg" ? "Corre sin aceleración por hardware (KVM): va a estar muy lento" : undefined}
+                    style={n.accel === "tcg" ? { color: "var(--amber)" } : undefined}>
+                    {n.accel === "tcg" ? "sin KVM, lento" : n.template_name}
+                  </small>
                 </li>
               ))}
               {lab && lab.nodes.length === 0 && <li style={{ cursor: "default" }}><span /><small>Sin equipos</small></li>}

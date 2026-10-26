@@ -1,0 +1,22 @@
+# Cisco vIOS-L2 (switch). La imagen NO se incluye: elegí la tuya en Imágenes y plantillas.
+id: cisco-vios-l2
+name: Cisco vIOS-L2
+vendor: Cisco
+engine: qemu
+category: switch
+icon: l3switch
+name_prefix: SW
+defaults:
+  ram: 1024
+  cpus: 1
+interfaces:
+  count: 16
+  naming: "Gi{slot}/{port}"
+  start: 0
+  ports_per_slot: 4
+console:
+  type: serial
+config:
+  nic: e1000
+  disk_interface: virtio
+  config: ios-disk

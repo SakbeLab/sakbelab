@@ -153,7 +153,42 @@ function slug(text: string) {
     .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "plantilla";
 }
 
+// Known images get the settings their vendor (and GNS3) recommend.
+function presetFor(fileName: string): Partial<Template> | null {
+  const n = fileName.toLowerCase();
+  if (/^vios[_-]?l2/.test(n)) {
+    return {
+      name: "Cisco vIOS-L2", vendor: "Cisco", category: "switch", icon: "l3switch", name_prefix: "SW",
+      defaults: { ram: 1024, cpus: 1 },
+      interfaces: { count: 16, naming: "Gi{slot}/{port}", start: 0, ports_per_slot: 4 },
+      config: { nic: "e1000", disk_interface: "virtio", config: "ios-disk" },
+    };
+  }
+  if (/^vios/.test(n)) {
+    return {
+      name: "Cisco vIOS", vendor: "Cisco", category: "router", icon: "router", name_prefix: "R",
+      defaults: { ram: 1024, cpus: 1 },
+      interfaces: { count: 8, naming: "Gi0/{index}", start: 0, ports_per_slot: 4 },
+      config: { nic: "e1000", disk_interface: "virtio", config: "ios-disk" },
+    };
+  }
+  if (/fortios|fgt|fortigate/.test(n)) {
+    return {
+      name: "FortiGate VM", vendor: "Fortinet", category: "security", icon: "firewall", name_prefix: "FW",
+      defaults: { ram: 2048, cpus: 1 },
+      interfaces: { count: 10, naming: "port{index}", start: 1, ports_per_slot: 4 },
+      config: { nic: "virtio-net-pci", disk_interface: "virtio", extra_disks: [30] },
+    };
+  }
+  return null;
+}
+
 function templateFromImage(img: ImageInfo): Partial<Template> {
+  const preset = img.kind === "qemu" ? presetFor(img.name) : null;
+  if (preset) {
+    const base = img.name.replace(/\.(qcow2|img|vmdk|iso)$/i, "");
+    return { id: slug(base), engine: "qemu", image: img.name, ...preset };
+  }
   const base = (img.reference ?? img.name).replace(/\.(qcow2|img|vmdk|iso|bin|iol)$/i, "");
   const engine: Engine = img.kind;
   return {
@@ -361,13 +396,23 @@ function TemplateForm({ initial, images, isNew, onCancel, onSaved, notify }: {
               <option value="vnc">Gráfica (VNC, equipos con escritorio)</option>
             </select>
           </label>
-          <label className="field" style={{ justifyContent: "flex-end" }}>
+          <label className="field">
             <span>Configuración inicial</span>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-              <input type="checkbox" checked={t.config?.config === "cloud-init"}
-                onChange={(e) => set({ config: { ...t.config, config: e.target.checked ? "cloud-init" : undefined } })} />
-              por cloud-init (VyOS, equipos modernos)
-            </label>
+            <select value={(t.config?.config as string) ?? ""}
+              onChange={(e) => set({ config: { ...t.config, config: e.target.value || undefined } })}>
+              <option value="">Por consola (sin disco)</option>
+              <option value="ios-disk">Disco de configuración Cisco (vIOS, vIOS-L2)</option>
+              <option value="cloud-init">cloud-init (VyOS, equipos modernos)</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Discos adicionales (GB)</span>
+            <input value={((t.config?.extra_disks as number[]) ?? []).join(", ")} placeholder="30"
+              onChange={(e) => {
+                const sizes = e.target.value.split(/[ ,]+/).map(Number).filter((n) => n > 0);
+                set({ config: { ...t.config, extra_disks: sizes.length ? sizes : undefined } });
+              }} />
+            <span className="help">Discos vacíos, por ejemplo 30 para FortiGate.</span>
           </label>
         </div>
       )}

@@ -1,0 +1,22 @@
+# FortiGate VM. La imagen NO se incluye: descargala del portal de Fortinet y cargala.
+# Lleva un segundo disco vacío de 30 GB para registros, como pide el fabricante.
+id: fortigate
+name: FortiGate VM
+vendor: Fortinet
+engine: qemu
+category: security
+icon: firewall
+name_prefix: FW
+defaults:
+  ram: 2048
+  cpus: 1
+interfaces:
+  count: 10
+  naming: "port{index}"
+  start: 1
+console:
+  type: serial
+config:
+  nic: virtio-net-pci
+  disk_interface: virtio
+  extra_disks: [30]
