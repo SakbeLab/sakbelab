@@ -97,15 +97,26 @@ def run(spec: dict) -> None:
     pid, master = pty.fork()
     if pid == 0:
         os.chdir(workdir)
-        os.execve(spec["command"][0], spec["command"], env)
+        try:
+            os.execve(spec["command"][0], spec["command"], env)
+        except OSError as exc:
+            hint = ""
+            if isinstance(exc, FileNotFoundError) and Path(spec["command"][0]).exists():
+                hint = " (es un binario de 32 bits: faltan las librerías libc6:i386)"
+            elif exc.errno == 8:
+                hint = " (formato de ejecutable no soportado por este sistema)"
+            os.write(1, f"No se pudo ejecutar la imagen IOL: {exc.strerror}{hint}\r\n".encode())
+            os._exit(127)
     os.set_blocking(master, False)
     (workdir / "iol.pid").write_text(str(pid))
 
     stopping = False
+    stopping_by_signal = False
 
     def stop(*_):
-        nonlocal stopping
+        nonlocal stopping, stopping_by_signal
         stopping = True
+        stopping_by_signal = True
 
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
@@ -113,6 +124,7 @@ def run(spec: dict) -> None:
     clients: list[socket.socket] = []
     history = bytearray()
     ready = workdir / "ready"
+    (workdir / "exited").unlink(missing_ok=True)
     ready.write_text("1")
 
     try:
@@ -181,6 +193,14 @@ def run(spec: dict) -> None:
                     except OSError:
                         pass  # IOL not listening yet
     finally:
+        if not stopping_by_signal:
+            # IOL exited by itself: keep what it printed, it explains why.
+            text = history.decode(errors="replace").replace("\r", "").strip()
+            sys.stderr.write(
+                f"IOL terminó solo. Últimos mensajes:\n{text[-2000:] or '(ninguno)'}\n"
+            )
+            sys.stderr.flush()
+            (workdir / "exited").write_text(text[-2000:])
         try:
             os.kill(pid, signal.SIGTERM)
             for _ in range(30):

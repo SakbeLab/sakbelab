@@ -87,3 +87,26 @@ def test_wrapper_bridges_frames_and_console(tmp_path):
         proc.terminate()
         proc.wait(5)
     assert not (tmp_path / "console.sock").exists()
+
+
+@pytest.mark.skipif(not can_tap, reason="needs root and /dev/net/tun")
+def test_engine_reports_why_iol_exited(tmp_path, monkeypatch):
+    from sakbe.engines.base import EngineUnavailable
+    from sakbe.engines.iol import IOLEngine
+    from sakbe.images.templates import Template
+    from sakbe.labs.models import Node
+
+    monkeypatch.setenv("SAKBE_DATA", str(tmp_path))
+    image = tmp_path / "images" / "iol" / "broken.bin"
+    image.parent.mkdir(parents=True)
+    image.write_text("#!/bin/sh\necho 'IOU License Error: hostname not found'\nexit 1\n")
+    image.chmod(0o755)
+    tpl = Template(
+        id="t",
+        name="T",
+        engine="iol",
+        image="broken.bin",
+        interfaces={"count": 1, "naming": "Ethernet{slot}/{port}"},
+    )
+    with pytest.raises(EngineUnavailable, match="IOU License Error"):
+        IOLEngine().create("lab", Node(name="R9", template="t"), tpl)

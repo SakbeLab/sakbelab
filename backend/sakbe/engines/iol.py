@@ -108,15 +108,32 @@ class IOLEngine(Engine):
             start_new_session=True,
         )
         (wd / "wrapper.pid").write_text(str(proc.pid))
-        for _ in range(50):
-            if (wd / "ready").exists():
-                return
+        # Ready means the wrapper is up; IOL itself may still fail in its first
+        # seconds (license, libraries), so watch it briefly before reporting success.
+        started = None
+        for _ in range(80):
+            if started is None and (wd / "ready").exists():
+                started = time.time()
             if proc.poll() is not None:
                 break
+            if started and time.time() - started > 2:
+                return
             time.sleep(0.1)
-        tail = (wd / "wrapper.log").read_text(errors="replace")[-400:]
         self.destroy(lab, node)
-        raise EngineUnavailable(f"IOL no arrancó en {node.name}: {tail.strip() or 'sin detalles'}")
+        raise EngineUnavailable(f"IOL no arrancó en {node.name}: {self.failure_reason(wd)}")
+
+    @staticmethod
+    def failure_reason(wd: Path) -> str:
+        exited = wd / "exited"
+        text = exited.read_text(errors="replace") if exited.exists() else ""
+        if not text.strip():
+            text = (
+                (wd / "wrapper.log").read_text(errors="replace")
+                if (wd / "wrapper.log").exists()
+                else ""
+            )
+        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+        return " ".join(lines[-4:])[-400:] or "sin mensajes; revisá wrapper.log"
 
     def destroy(self, lab, node):
         wd = workdir(lab, node)
