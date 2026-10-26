@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SakbeLab</title>
+<link rel="stylesheet" href="/static/vendor/xterm.css">
+<style>
+  :root {
+    --night: #0F1B2D; --night-2: #16253B; --night-3: #22344F;
+    --jade: #1F8A70; --jade-2: #2BAF8E; --cal: #F4F1EA; --muted: #9AA8BC;
+    --warn: #D9A441; --bad: #D9534F;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--night); color: var(--cal); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+         display: grid; grid-template-rows: auto 1fr; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--night-3); }
+  header h1 { font-size: 17px; margin: 0; letter-spacing: .2px; }
+  header h1 b { font-weight: 800; } header h1 span { font-weight: 400; }
+  header .tag { font-size: 12px; color: var(--muted); }
+  header .spacer { flex: 1; }
+  main { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; min-height: 0; }
+  aside { border-right: 1px solid var(--night-3); overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+  section.card { background: var(--night-2); border: 1px solid var(--night-3); border-radius: 10px; padding: 12px; }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .lab-name { font-weight: 700; font-size: 15px; flex: 1; }
+  .desc { color: var(--muted); font-size: 12.5px; margin: 4px 0 10px; }
+  .badge { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: var(--night-3); color: var(--muted); }
+  .badge.running { background: rgba(31,138,112,.2); color: var(--jade-2); }
+  .badge.partial { background: rgba(217,164,65,.18); color: var(--warn); }
+  button { font: inherit; font-size: 13px; border-radius: 7px; border: 1px solid var(--night-3); background: var(--night-3);
+           color: var(--cal); padding: 5px 10px; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--jade); border-color: var(--jade); }
+  button.primary:hover { background: var(--jade-2); }
+  button.danger:hover { border-color: var(--bad); color: #f2b8b6; }
+  button:disabled { opacity: .45; cursor: default; }
+  ul.nodes { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+  ul.nodes li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; background: var(--night); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.running { background: var(--jade-2); } .dot.stopped { background: var(--warn); }
+  .node-name { font-weight: 600; } .node-tpl { color: var(--muted); font-size: 12px; flex: 1; }
+  .links { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  textarea { width: 100%; min-height: 180px; resize: vertical; background: var(--night); color: var(--cal);
+             border: 1px solid var(--night-3); border-radius: 8px; padding: 8px; font: 12.5px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin: 0 0 8px; }
+  .msg { font-size: 12.5px; margin-top: 8px; min-height: 1em; white-space: pre-wrap; }
+  .msg.err { color: #f2b8b6; } .msg.ok { color: var(--jade-2); }
+  .term-area { display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+  .tabs { display: flex; gap: 2px; padding: 8px 10px 0; border-bottom: 1px solid var(--night-3); overflow-x: auto; }
+  .tab { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px 8px 0 0; background: var(--night-2);
+         color: var(--muted); cursor: pointer; white-space: nowrap; border: 1px solid transparent; border-bottom: none; }
+  .tab.active { color: var(--cal); border-color: var(--night-3); background: #0B1422; }
+  .tab .x { opacity: .6; } .tab .x:hover { opacity: 1; }
+  .terms { position: relative; background: #0B1422; min-height: 0; }
+  .term { position: absolute; inset: 0; padding: 8px; display: none; } .term.active { display: block; }
+  .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); text-align: center; padding: 24px; }
+  @media (max-width: 760px) {
+    main { grid-template-columns: 1fr; grid-template-rows: auto 60vh; }
+    aside { border-right: none; border-bottom: 1px solid var(--night-3); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1><b>Sakbe</b><span>Lab</span></h1>
+  <span class="tag">Fase 0 · prueba de concepto</span>
+  <span class="spacer"></span>
+  <span class="tag" id="version"></span>
+</header>
+<main>
+  <aside>
+    <div id="labs"></div>
+    <section class="card">
+      <h2>Nuevo lab desde YAML</h2>
+      <textarea id="yaml" spellcheck="false" placeholder="name: mi-lab&#10;nodes:&#10;  R1: {template: frr}&#10;..."></textarea>
+      <div class="row" style="margin-top:8px">
+        <button id="example">Cargar ejemplo</button>
+        <span class="spacer" style="flex:1"></span>
+        <button class="primary" id="create">Crear lab</button>
+      </div>
+      <div class="msg" id="createMsg"></div>
+    </section>
+  </aside>
+  <div class="term-area">
+    <div class="tabs" id="tabs"></div>
+    <div class="terms" id="terms">
+      <div class="empty" id="empty">Encendé un lab y abrí la consola de un nodo.<br>Las consolas abiertas aparecen aquí como pestañas.</div>
+    </div>
+  </div>
+</main>
+
+<script src="/static/vendor/xterm.js"></script>
+<script src="/static/vendor/addon-fit.js"></script>
+<script>
+const API = "/api/v1";
+const EXAMPLE = `name: fase0
+description: Dos routers FRR conectados con OSPF (prueba de la Fase 0)
+nodes:
+  R1:
+    template: frr
+    config: |
+      hostname R1
+      interface lo
+       ip address 1.1.1.1/32
+       ip ospf area 0
+      exit
+      interface eth1
+       ip address 10.0.12.1/30
+       ip ospf area 0
+      exit
+      router ospf
+       ospf router-id 1.1.1.1
+      exit
+  R2:
+    template: frr
+    config: |
+      hostname R2
+      interface lo
+       ip address 2.2.2.2/32
+       ip ospf area 0
+      exit
+      interface eth1
+       ip address 10.0.12.2/30
+       ip ospf area 0
+      exit
+      router ospf
+       ospf router-id 2.2.2.2
+      exit
+links:
+  - [R1:eth1, R2:eth1]
+`;
+const STATE = { running: "encendido", stopped: "apagado", partial: "parcial" };
+const sessions = new Map();
+let active = null;
+let lastSnapshot = null;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, opts);
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { const j = await res.json(); detail = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail); } catch {}
+    throw new Error(detail);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+function labCard(lab) {
+  const on = lab.state !== "stopped";
+  const nodes = lab.nodes.map(n => `
+    <li>
+      <span class="dot ${esc(n.state)}"></span>
+      <span class="node-name">${esc(n.name)}</span>
+      <span class="node-tpl">${esc(n.template)}</span>
+      <button data-act="console" data-lab="${esc(lab.name)}" data-node="${esc(n.name)}" ${n.state === "running" ? "" : "disabled"}>Consola</button>
+    </li>`).join("");
+  const links = lab.links.map(l => `${esc(l.a)} ↔ ${esc(l.b)}`).join(" · ");
+  return `
+    <section class="card">
+      <div class="row">
+        <span class="lab-name">${esc(lab.name)}</span>
+        <span class="badge ${esc(lab.state)}">${STATE[lab.state] || lab.state}</span>
+      </div>
+      ${lab.description ? `<div class="desc">${esc(lab.description)}</div>` : ""}
+      <div class="row">
+        ${on ? `<button data-act="stop" data-lab="${esc(lab.name)}">Apagar</button>
+                <button data-act="save" data-lab="${esc(lab.name)}">Guardar config</button>`
+             : `<button class="primary" data-act="start" data-lab="${esc(lab.name)}">Encender</button>`}
+        <a href="${API}/labs/${encodeURIComponent(lab.name)}/yaml"><button>Exportar YAML</button></a>
+        <button class="danger" data-act="delete" data-lab="${esc(lab.name)}">Eliminar</button>
+      </div>
+      <ul class="nodes">${nodes}</ul>
+      ${links ? `<div class="links">Enlaces: ${links}</div>` : ""}
+      <div class="msg" data-msg="${esc(lab.name)}"></div>
+    </section>`;
+}
+
+async function refresh() {
+  try {
+    const labs = await api("/labs");
+    const snapshot = JSON.stringify(labs);
+    if (snapshot === lastSnapshot) return;
+    lastSnapshot = snapshot;
+    $("labs").innerHTML = labs.length ? labs.map(labCard).join("")
+      : `<section class="card"><div class="desc" style="margin:0">Todavía no hay labs. Creá uno desde YAML; podés empezar con el ejemplo.</div></section>`;
+  } catch (e) {
+    $("labs").innerHTML = `<section class="card"><div class="msg err">No se pudo contactar la API: ${esc(e.message)}</div></section>`;
+  }
+}
+
+function setMsg(lab, text, kind) {
+  const el = document.querySelector(`[data-msg="${CSS.escape(lab)}"]`);
+  if (el) { el.textContent = text; el.className = "msg " + (kind || ""); }
+}
+
+$("labs").addEventListener("click", async (ev) => {
+  const btn = ev.target.closest("button[data-act]");
+  if (!btn) return;
+  const { act, lab, node } = btn.dataset;
+  if (act === "console") return openConsole(lab, node);
+  if (act === "delete" && !confirm(`¿Eliminar el lab "${lab}"? Se apaga y se borra su definición.`)) return;
+  btn.disabled = true;
+  setMsg(lab, act === "start" ? "Encendiendo..." : act === "stop" ? "Apagando..." : act === "save" ? "Guardando..." : "Eliminando...");
+  try {
+    if (act === "delete") {
+      await api(`/labs/${encodeURIComponent(lab)}`, { method: "DELETE" });
+      closeLabSessions(lab);
+    } else {
+      const r = await api(`/labs/${encodeURIComponent(lab)}/${act}`, { method: "POST" });
+      if (act === "stop") closeLabSessions(lab);
+      lastSnapshot = null;
+      await refresh();
+      if (act === "save") setMsg(lab, r.saved.length ? `Configuración guardada: ${r.saved.join(", ")}` : "No hay nodos encendidos.", "ok");
+      return;
+    }
+  } catch (e) {
+    lastSnapshot = null;
+    await refresh();
+    setMsg(lab, e.message, "err");
+    return;
+  }
+  lastSnapshot = null;
+  await refresh();
+});
+
+$("example").onclick = () => { $("yaml").value = EXAMPLE; };
+$("create").onclick = async () => {
+  const msg = $("createMsg");
+  msg.className = "msg"; msg.textContent = "Creando...";
+  try {
+    const lab = await api("/labs/yaml", { method: "POST", headers: { "Content-Type": "text/plain" }, body: $("yaml").value });
+    msg.className = "msg ok"; msg.textContent = `Lab "${lab.name}" creado.`;
+    $("yaml").value = "";
+    lastSnapshot = null;
+    await refresh();
+  } catch (e) { msg.className = "msg err"; msg.textContent = e.message; }
+};
+
+function openConsole(lab, node) {
+  const key = `${lab}/${node}`;
+  if (sessions.has(key)) return activate(key);
+  $("empty").style.display = "none";
+
+  const tab = document.createElement("div");
+  tab.className = "tab";
+  tab.innerHTML = `<span>${esc(node)} <span style="opacity:.55">· ${esc(lab)}</span></span><span class="x" title="Cerrar">✕</span>`;
+  const pane = document.createElement("div");
+  pane.className = "term";
+  $("tabs").appendChild(tab); $("terms").appendChild(pane);
+
+  const term = new Terminal({ cursorBlink: true, fontSize: 14, scrollback: 5000,
+    fontFamily: 'ui-monospace, Menlo, Consolas, "Liberation Mono", monospace',
+    theme: { background: "#0B1422", foreground: "#F4F1EA", cursor: "#2BAF8E", selectionBackground: "#22344F" } });
+  const fit = new FitAddon.FitAddon();
+  term.loadAddon(fit);
+  term.open(pane);
+
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  const ws = new WebSocket(`${proto}://${location.host}${API}/labs/${encodeURIComponent(lab)}/nodes/${encodeURIComponent(node)}/console`);
+  const sendSize = () => { if (ws.readyState === 1) ws.send(JSON.stringify({ t: "r", c: term.cols, r: term.rows })); };
+  ws.onopen = () => { fit.fit(); sendSize(); term.focus(); };
+  ws.onmessage = (e) => term.write(e.data);
+  ws.onclose = () => term.write("\r\n\x1b[90m[desconectado: cerrá la pestaña y abrí la consola de nuevo]\x1b[0m\r\n");
+  term.onData((d) => { if (ws.readyState === 1) ws.send(JSON.stringify({ t: "i", d })); });
+  term.onResize(sendSize);
+
+  const s = { lab, tab, pane, term, fit, ws };
+  sessions.set(key, s);
+  tab.addEventListener("click", (ev) => { if (ev.target.classList.contains("x")) closeSession(key); else activate(key); });
+  activate(key);
+}
+
+function activate(key) {
+  for (const [k, s] of sessions) {
+    const on = k === key;
+    s.tab.classList.toggle("active", on); s.pane.classList.toggle("active", on);
+  }
+  active = key;
+  const s = sessions.get(key);
+  if (s) { requestAnimationFrame(() => { s.fit.fit(); s.term.focus(); }); }
+}
+
+function closeSession(key) {
+  const s = sessions.get(key);
+  if (!s) return;
+  try { s.ws.close(); } catch {}
+  s.term.dispose(); s.tab.remove(); s.pane.remove();
+  sessions.delete(key);
+  if (active === key) {
+    const next = [...sessions.keys()].pop();
+    if (next) activate(next); else { active = null; $("empty").style.display = ""; }
+  }
+}
+
+function closeLabSessions(lab) {
+  for (const [k, s] of [...sessions]) if (s.lab === lab) closeSession(k);
+}
+
+window.addEventListener("resize", () => { const s = sessions.get(active); if (s) s.fit.fit(); });
+
+api("/health").then(h => { $("version").textContent = "v" + h.version; }).catch(() => {});
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

@@ -5,7 +5,7 @@
 
 Los sakbé eran las calzadas blancas que conectaban las ciudades mayas. SakbeLab conecta tus equipos virtuales.
 
-> Estado: en desarrollo temprano (Fase 0, prueba de concepto). Todavía no hay una versión lista para usar.
+> Estado: Fase 0 (prueba de concepto). Ya se pueden crear labs con routers FRR, conectarlos y usarlos desde la consola web. Ver [cómo probarla](docs/fase0.md).
 
 ## Qué es
 

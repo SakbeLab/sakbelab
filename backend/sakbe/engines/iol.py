@@ -1,24 +1,28 @@
-"""Cisco IOL engine (Phase 0 target).
+"""Cisco IOL engine (planned for MVP 0.1, issue #9).
 
 IOL runs as a native Linux binary, so it does not need nested virtualization.
-Phase 0 goal: start two IOL nodes, connect them and ping between them from
-the browser console.
+Users must provide their own licensed images.
 """
 
-from sakbe.engines.base import Engine
+from sakbe.engines.base import Engine, EngineUnavailable
+
+_MSG = "El motor IOL todavía no está disponible (planificado para el MVP 0.1)."
 
 
 class IOLEngine(Engine):
     name = "iol"
 
-    def start(self, node_id, image, ram, cpus, config):
-        raise NotImplementedError("Phase 0")
+    def create(self, lab, node, template):
+        raise EngineUnavailable(_MSG)
 
-    def stop(self, node_id):
-        raise NotImplementedError("Phase 0")
+    def destroy(self, lab, node):
+        return None
 
-    def console_port(self, node_id):
-        raise NotImplementedError("Phase 0")
+    def status(self, lab, node):
+        return "absent"
 
-    def attach_interface(self, node_id, interface, bridge):
-        raise NotImplementedError("Phase 0")
+    def pid(self, lab, node):
+        raise EngineUnavailable(_MSG)
+
+    def console_command(self, lab, node, template):
+        raise EngineUnavailable(_MSG)

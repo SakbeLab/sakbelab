@@ -1,0 +1,15 @@
+# Host Linux liviano (Alpine). Su configuración día 0 es un script de shell.
+id: linux-host
+name: Host Linux
+vendor: Alpine
+engine: docker
+image: alpine:3.20
+icon: pc
+defaults:
+  ram: 64
+interfaces:
+  count: 2
+  naming: "eth{index}"
+  start: 1
+console:
+  command: [/bin/sh]

@@ -1,4 +1,5 @@
 # Plantilla de ejemplo. La imagen NO se incluye: cada usuario carga la suya.
+# El motor IOL está planificado para el MVP 0.1.
 id: cisco-iol-l3
 name: Cisco IOL L3
 vendor: Cisco

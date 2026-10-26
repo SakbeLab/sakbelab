@@ -23,7 +23,8 @@ ova/packer_cache/
 *.qcow2
 *.bin
 *.iol
-images/
+/images/
+/data/
 
 # Labs locales
 *.sakbe

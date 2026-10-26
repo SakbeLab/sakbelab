@@ -1,0 +1,17 @@
+# Router FRR (FRRouting) en contenedor. Imagen pública y libre: no requiere licencias.
+id: frr
+name: Router FRR
+vendor: FRRouting
+engine: docker
+image: quay.io/frrouting/frr:10.2.1
+icon: router
+defaults:
+  ram: 256
+interfaces:
+  count: 8
+  naming: "eth{index}"
+  start: 1
+console:
+  command: [vtysh]
+config:
+  flavor: frr

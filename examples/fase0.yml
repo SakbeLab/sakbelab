@@ -1,0 +1,41 @@
+# Lab de la Fase 0: dos routers FRR conectados, con OSPF entre sus loopbacks.
+# Prueba: desde la consola de R1, `show ip ospf neighbor` y `ping 2.2.2.2` (Ctrl+C para detener).
+name: fase0
+description: Dos routers FRR conectados con OSPF (prueba de la Fase 0)
+nodes:
+  R1:
+    template: frr
+    x: 150
+    y: 200
+    config: |
+      hostname R1
+      interface lo
+       ip address 1.1.1.1/32
+       ip ospf area 0
+      exit
+      interface eth1
+       ip address 10.0.12.1/30
+       ip ospf area 0
+      exit
+      router ospf
+       ospf router-id 1.1.1.1
+      exit
+  R2:
+    template: frr
+    x: 450
+    y: 200
+    config: |
+      hostname R2
+      interface lo
+       ip address 2.2.2.2/32
+       ip ospf area 0
+      exit
+      interface eth1
+       ip address 10.0.12.2/30
+       ip ospf area 0
+      exit
+      router ospf
+       ospf router-id 2.2.2.2
+      exit
+links:
+  - [R1:eth1, R2:eth1]
