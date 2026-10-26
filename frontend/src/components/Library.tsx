@@ -406,6 +406,17 @@ function TemplateForm({ initial, images, isNew, onCancel, onSaved, notify }: {
             </select>
           </label>
           <label className="field">
+            <span>Procesador</span>
+            <select value={(t.config?.cpu as string) ?? ""}
+              onChange={(e) => set({ config: { ...t.config, cpu: e.target.value || undefined } })}>
+              <option value="">Automático (el del servidor)</option>
+              <option value="kvm64">kvm64 (genérico, compatible)</option>
+              <option value="qemu64">qemu64 (genérico)</option>
+              <option value="Nehalem">Nehalem (Intel antiguo)</option>
+            </select>
+            <span className="help">Si un equipo arranca muy lento o se traba, probá kvm64.</span>
+          </label>
+          <label className="field">
             <span>Discos adicionales (GB)</span>
             <input value={((t.config?.extra_disks as number[]) ?? []).join(", ")} placeholder="30"
               onChange={(e) => {
