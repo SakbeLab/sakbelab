@@ -42,6 +42,10 @@ def workdir(lab: str, node: Node) -> Path:
     return settings.data_dir() / "run" / lab / node.name
 
 
+def sockets(lab: str, node: Node) -> Path:
+    return settings.sock_dir(lab, node.name)
+
+
 def tap_name(lab: str, node: Node, index: int) -> str:
     h = hashlib.sha1(f"{lab}|{node.name}".encode()).hexdigest()[:8]
     return f"sq{h}{index:02d}"
@@ -114,6 +118,7 @@ class QemuEngine(Engine):
     def create(self, lab, node, template: Template):
         wd = workdir(lab, node)
         wd.mkdir(parents=True, exist_ok=True)
+        sk = sockets(lab, node)
         overlay = self._overlay(lab, node, template)
         binary = self._binary(template)
 
@@ -146,9 +151,9 @@ class QemuEngine(Engine):
             "-drive",
             f"file={overlay},if={disk_if},cache=writeback",
             "-serial",
-            f"unix:{wd / 'console.sock'},server,nowait",
+            f"unix:{sk / 'console.sock'},server,nowait",
             "-qmp",
-            f"unix:{wd / 'qmp.sock'},server,nowait",
+            f"unix:{sk / 'qmp.sock'},server,nowait",
             "-pidfile",
             str(wd / "qemu.pid"),
             "-daemonize",
@@ -159,7 +164,7 @@ class QemuEngine(Engine):
         elif have_kvm():
             cmd += ["-cpu", "host"]
         if cfg.get("display") == "vnc":
-            cmd += ["-vnc", f"unix:{wd / 'vnc.sock'}"]
+            cmd += ["-vnc", f"unix:{sk / 'vnc.sock'}"]
         else:
             cmd += ["-display", "none", "-vga", cfg.get("vga", "std")]
         for i, tap in enumerate(taps):
@@ -216,7 +221,10 @@ class QemuEngine(Engine):
         wd = workdir(lab, node)
         pid = _pid(wd / "qemu.pid")
         if pid:
-            with contextlib.suppress(Exception), QMP(str(wd / "qmp.sock"), timeout=2) as qmp:
+            with (
+                contextlib.suppress(Exception),
+                QMP(str(sockets(lab, node) / "qmp.sock"), timeout=2) as qmp,
+            ):
                 qmp.execute("quit")
             for _ in range(30):
                 if _pid(wd / "qemu.pid") is None:
@@ -232,7 +240,7 @@ class QemuEngine(Engine):
             util.run(["ip", "link", "del", tap], check=False)
         (wd / "qemu.pid").unlink(missing_ok=True)
         for sock in ("console.sock", "qmp.sock", "vnc.sock"):
-            (wd / sock).unlink(missing_ok=True)
+            (sockets(lab, node) / sock).unlink(missing_ok=True)
 
     def status(self, lab, node):
         return "running" if _pid(workdir(lab, node) / "qemu.pid") else "absent"
@@ -250,7 +258,7 @@ class QemuEngine(Engine):
         return ifaces.index(iface)
 
     def console_command(self, lab, node, template):
-        sock = workdir(lab, node) / "console.sock"
+        sock = sockets(lab, node) / "console.sock"
         return [sys.executable, "-m", "sakbe.engines.socket_console", str(sock), "30"]
 
     def wipe(self, lab, node):

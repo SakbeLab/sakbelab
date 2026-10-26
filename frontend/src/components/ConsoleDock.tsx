@@ -1,11 +1,13 @@
 import { useRef } from "react";
 import { Icon } from "../icons";
 import { Terminal } from "./Terminal";
+import { VncConsole } from "./VncConsole";
 
 export interface ConsoleTab {
   key: string;
   lab: string;
   node: string;
+  kind: "serial" | "vnc";
 }
 
 interface Props {
@@ -34,7 +36,7 @@ export function ConsoleDock({ tabs, active, height, onHeight, onSelect, onClose,
   };
 
   const popout = (t: ConsoleTab) => {
-    window.open(`/console/${encodeURIComponent(t.lab)}/${encodeURIComponent(t.node)}`, `console-${t.key}`,
+    window.open(`/console/${encodeURIComponent(t.lab)}/${encodeURIComponent(t.node)}${t.kind === "vnc" ? "?vnc=1" : ""}`, `console-${t.key}`,
       "width=900,height=560");
     onClose(t.key);
   };
@@ -66,7 +68,9 @@ export function ConsoleDock({ tabs, active, height, onHeight, onSelect, onClose,
       <div className="dock-body">
         {tabs.map((t) => (
           <div key={t.key} className={`term-pane ${t.key === active ? "active" : ""}`}>
-            <Terminal lab={t.lab} node={t.node} active={t.key === active} />
+            {t.kind === "vnc"
+              ? <VncConsole lab={t.lab} node={t.node} active={t.key === active} />
+              : <Terminal lab={t.lab} node={t.node} active={t.key === active} />}
           </div>
         ))}
       </div>

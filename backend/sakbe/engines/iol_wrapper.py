@@ -9,7 +9,7 @@ interface (`siXXXXXXXXNN`) and copies frames between the tap and the IOL socket.
 SakbeLab then plugs the taps into link bridges like any other node.
 
 It also runs IOL on a pseudo-terminal and serves that console on a Unix socket
-(`console.sock`), keeping a short scrollback for clients that join later.
+(`console.sock`, in a short socket directory), keeping a short scrollback for clients that join later.
 
     python -m sakbe.engines.iol_wrapper <spec.json>
 """
@@ -84,7 +84,7 @@ def run(spec: dict) -> None:
     netio.setblocking(False)
     iol_path = str(ndir / str(iol_id))
 
-    console_path = workdir / "console.sock"
+    console_path = Path(spec.get("console") or workdir / "console.sock")
     console_path.unlink(missing_ok=True)
     listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     listener.bind(str(console_path))

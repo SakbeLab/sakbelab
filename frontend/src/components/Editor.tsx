@@ -48,6 +48,8 @@ export function Editor({ labName, templates, onExit, onLibrary, notify }: {
   const [activeConsole, setActiveConsole] = useState<string | null>(null);
   const [dockHeight, setDockHeight] = useState(280);
   const [busy, setBusy] = useState<string | null>(null);
+  const [kvm, setKvm] = useState(true);
+  const [kvmDismissed, setKvmDismissed] = useState(false);
   const dragging = useRef(false);
   const fitted = useRef(false);
   const flow = useReactFlow();
@@ -69,6 +71,10 @@ export function Editor({ labName, templates, onExit, onLibrary, notify }: {
     const t = setInterval(refresh, POLL_MS);
     return () => clearInterval(t);
   }, [refresh]);
+
+  useEffect(() => {
+    api.health().then((h) => setKvm(h.kvm)).catch(() => undefined);
+  }, []);
 
   const run = useCallback(async (label: string | null, action: () => Promise<Lab | null | void>) => {
     if (label) setBusy(label);
@@ -187,7 +193,8 @@ export function Editor({ labName, templates, onExit, onLibrary, notify }: {
       return;
     }
     const key = `${labName}/${node.name}`;
-    setConsoles((tabs) => (tabs.some((t) => t.key === key) ? tabs : [...tabs, { key, lab: labName, node: node.name }]));
+    const kind = node.console_kind === "vnc" ? "vnc" : "serial";
+    setConsoles((tabs) => (tabs.some((t) => t.key === key) ? tabs : [...tabs, { key, lab: labName, node: node.name, kind }]));
     setActiveConsole(key);
   }, [labName, notify]);
 
@@ -349,6 +356,15 @@ export function Editor({ labName, templates, onExit, onLibrary, notify }: {
                 ? <>Desde {pending.node} {pending.iface}: elegí el otro equipo</>
                 : <>Modo enlace: hacé clic en el primer equipo</>}
               <button onClick={stopLinking}>Terminar</button>
+            </div>
+          )}
+          {!kvm && !kvmDismissed && lab?.nodes.some((n) => n.engine === "qemu") && (
+            <div className="kvm-banner" role="status">
+              <span>
+                Este servidor no tiene virtualización por hardware (KVM): los equipos QEMU van a funcionar,
+                pero muy lentos. Activá la virtualización anidada en la VM de SakbeLab.
+              </span>
+              <button onClick={() => setKvmDismissed(true)} aria-label="Cerrar aviso"><Icon name="close" size={14} /></button>
             </div>
           )}
           {lab && lab.nodes.length === 0 && lab.notes.length === 0 && (

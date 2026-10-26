@@ -16,6 +16,7 @@ from pydantic import BaseModel, ValidationError
 from sakbe import __version__, engines
 from sakbe.api import console, images_api
 from sakbe.engines import EngineUnavailable
+from sakbe.engines import qemu as qemu_engine
 from sakbe.images import templates
 from sakbe.labs import runtime, store
 from sakbe.labs.models import Lab, LabCreate, Link, Node, Note, split_endpoint
@@ -87,6 +88,14 @@ def _view(lab: Lab) -> dict:
             and engines.ENGINES.get(t.engine) is not None
             and (engines.ENGINES[t.engine].has_console())
         )
+        n["engine"] = t.engine if t else None
+        n["console_kind"] = (
+            "vnc"
+            if t and t.engine == "qemu" and t.config.get("display") == "vnc"
+            else "serial"
+            if n["has_console"]
+            else "none"
+        )
     for link, out in zip(lab.links, data["links"], strict=True):
         a_state = states.get(split_endpoint(link.a)[0])
         b_state = states.get(split_endpoint(link.b)[0])
@@ -135,7 +144,12 @@ def _check_unlocked(item) -> None:
 
 @app.get("/api/v1/health")
 def health() -> dict:
-    return {"status": "ok", "version": __version__}
+    return {
+        "status": "ok",
+        "version": __version__,
+        "kvm": qemu_engine.have_kvm(),
+        "qemu": shutil.which("qemu-system-x86_64") is not None,
+    }
 
 
 @app.get("/api/v1/templates")
@@ -559,6 +573,21 @@ async def node_console(ws: WebSocket, name: str, node: str) -> None:
         await ws.close()
         return
     await console.bridge(ws, command)
+
+
+@app.websocket("/api/v1/labs/{name}/nodes/{node}/vnc")
+async def node_vnc(ws: WebSocket, name: str, node: str) -> None:
+    """Proxy the node's VNC (RFB) stream to noVNC in the browser."""
+    try:
+        lab = store.load(name)
+        target = lab.node(node)
+    except KeyError:
+        await ws.close(code=4404)
+        return
+    sock = qemu_engine.sockets(lab.name, target) / "vnc.sock"
+    subprotocols = ws.scope.get("subprotocols") or []
+    await ws.accept(subprotocol="binary" if "binary" in subprotocols else None)
+    await console.vnc_bridge(ws, str(sock))
 
 
 # ---------------------------------------------------------------- web app

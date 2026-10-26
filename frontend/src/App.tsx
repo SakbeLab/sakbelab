@@ -5,6 +5,7 @@ import { Editor } from "./components/Editor";
 import { Home } from "./components/Home";
 import { Library } from "./components/Library";
 import { Terminal } from "./components/Terminal";
+import { VncConsole } from "./components/VncConsole";
 
 type Toast = { id: number; text: string; error: boolean };
 
@@ -18,7 +19,12 @@ export default function App() {
   if (consoleMatch) {
     const [, lab, node] = consoleMatch.map(decodeURIComponent);
     document.title = `${node} · ${lab}`;
-    return <div className="console-page"><Terminal lab={lab} node={node} active /></div>;
+    const vnc = new URLSearchParams(location.search).has("vnc");
+    return (
+      <div className="console-page">
+        {vnc ? <VncConsole lab={lab} node={node} active /> : <Terminal lab={lab} node={node} active />}
+      </div>
+    );
   }
   return <Main />;
 }

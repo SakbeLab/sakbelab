@@ -126,3 +126,13 @@ def test_status_and_registration():
 
     assert isinstance(engines.get("qemu"), qemu.QemuEngine)
     assert qemu.QemuEngine().status("nolab", Node(name="Z", template="fortigate")) == "absent"
+
+
+def test_socket_paths_stay_short(tmp_path, monkeypatch):
+    from sakbe import settings
+
+    monkeypatch.setenv("SAKBE_DATA", str(tmp_path / ("x" * 120)))
+    monkeypatch.setenv("SAKBE_SOCK_DIR", str(tmp_path / "s"))
+    sock = settings.sock_dir("a" * 32, "B" * 32) / "console.sock"
+    assert len(str(sock)) < 108
+    assert settings.sock_dir("lab", "R1") != settings.sock_dir("lab", "R2")

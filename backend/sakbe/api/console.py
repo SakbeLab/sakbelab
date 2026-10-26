@@ -82,3 +82,32 @@ async def bridge(ws: WebSocket, command: list[str]) -> None:
             os.close(master)
         output.cancel()
         await asyncio.to_thread(proc.wait)
+
+
+async def vnc_bridge(ws: WebSocket, sock_path: str) -> None:
+    """Copy bytes between a WebSocket (noVNC) and a VNC Unix socket."""
+    try:
+        reader, writer = await asyncio.open_unix_connection(sock_path)
+    except OSError:
+        await ws.close(code=4404)
+        return
+
+    async def to_browser() -> None:
+        while data := await reader.read(65536):
+            await ws.send_bytes(data)
+        await ws.close()
+
+    pump = asyncio.create_task(to_browser())
+    try:
+        while True:
+            msg = await ws.receive()
+            if msg["type"] == "websocket.disconnect":
+                break
+            data = msg.get("bytes") or (msg.get("text") or "").encode()
+            writer.write(data)
+            await writer.drain()
+    except (WebSocketDisconnect, RuntimeError, OSError):
+        pass
+    finally:
+        pump.cancel()
+        writer.close()

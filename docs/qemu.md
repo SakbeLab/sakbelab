@@ -10,7 +10,7 @@ El motor QEMU corre máquinas virtuales completas a partir de imágenes QCOW2 (o
   - VirtualBox: *Sistema > Procesador > Habilitar VT-x/AMD-V anidado*.
   - Proxmox: tipo de CPU `host`.
 
-Comprobá que hay aceleración: dentro de la VM, `ls /dev/kvm` debe existir.
+Comprobá que hay aceleración: dentro de la VM, `ls /dev/kvm` debe existir. Si no existe, el editor muestra un aviso cuando el lab tiene equipos QEMU.
 
 ## Cargar una imagen y crear su plantilla
 
@@ -26,7 +26,7 @@ Comprobá que hay aceleración: dentro de la VM, `ls /dev/kvm` debe existir.
 
 - Cada equipo corre como un proceso `qemu-system`. SakbeLab crea un **disco overlay** sobre tu imagen base, así la base no se modifica y lo que guardes (por ejemplo con `write memory`) persiste al apagar y encender. Se borra al eliminar el nodo.
 - Cada interfaz es un dispositivo tap que se conecta a los enlaces como el de cualquier otro equipo.
-- La consola serial se ve en el navegador. Para equipos gráficos, la consola VNC también.
+- La consola serial se ve en el navegador. Si la plantilla usa consola gráfica (VNC), al abrir la consola se ve la pantalla del equipo, con un botón para enviar Ctrl+Alt+Supr. Ambas se pueden abrir en otra ventana.
 - Los archivos de cada equipo quedan en `/opt/sakbe/run/<lab>/<equipo>/`.
 
 ## Licencias

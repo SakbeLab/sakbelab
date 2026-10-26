@@ -91,6 +91,7 @@ class IOLEngine(Engine):
         iourc = images.kind_dir("iol") / "iourc"
         spec = {
             "workdir": str(wd),
+            "console": str(settings.sock_dir(lab, node.name) / "console.sock"),
             "iol_id": iol_id,
             "bridge_id": iol_id + 512,
             "ports": ports,
@@ -162,12 +163,12 @@ class IOLEngine(Engine):
         util.run(["ip", "link", "set", tap, "up"])
 
     def console_command(self, lab, node, template):
-        sock = workdir(lab, node) / "console.sock"
+        sock = settings.sock_dir(lab, node.name) / "console.sock"
         return [sys.executable, "-m", "sakbe.engines.iol_console", str(sock)]
 
     def save_config(self, lab, node):
         """Best effort: read `show running-config` through the console."""
-        sock_path = workdir(lab, node) / "console.sock"
+        sock_path = settings.sock_dir(lab, node.name) / "console.sock"
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.settimeout(1.0)

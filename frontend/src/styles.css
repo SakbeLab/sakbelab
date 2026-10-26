@@ -333,3 +333,19 @@ table.list .icon-btn:hover { color: var(--ink); }
   .devices, .summary { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.vnc-status {
+  position: absolute; inset: 0; display: grid; place-items: center; color: var(--on-night-soft); pointer-events: none;
+}
+.vnc-cad {
+  position: absolute; top: 6px; right: 10px; display: flex; align-items: center; gap: 6px; padding: 4px 10px;
+  border-radius: var(--radius); border: 1px solid var(--night-line); background: var(--night-2); color: var(--on-night);
+  cursor: pointer; font-size: 12px; opacity: 0.85;
+}
+.vnc-cad:hover { opacity: 1; }
+.kvm-banner {
+  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 5; max-width: min(640px, 90%);
+  background: #fff6e0; color: #6b4b06; border: 1px solid #ecd6a0; border-radius: 8px; padding: 8px 12px;
+  font-size: 13px; display: flex; gap: 10px; align-items: flex-start;
+}
+.kvm-banner button { border: none; background: none; cursor: pointer; color: inherit; padding: 0; line-height: 0; }

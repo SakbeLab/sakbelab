@@ -40,6 +40,8 @@ export interface LabNode {
   interfaces: string[];
   used_interfaces: string[];
   has_console: boolean;
+  engine: Engine | null;
+  console_kind: "serial" | "vnc" | "none";
 }
 
 export interface LabLink {
@@ -110,7 +112,7 @@ async function call<T>(method: string, path: string, body?: unknown, text = fals
 const enc = encodeURIComponent;
 
 export const api = {
-  health: () => call<{ version: string }>("GET", "/health"),
+  health: () => call<{ version: string; kvm: boolean; qemu: boolean }>("GET", "/health"),
   templates: () => call<Template[]>("GET", "/templates"),
   saveTemplate: (t: Partial<Template>, isNew: boolean) =>
     isNew ? call<Template>("POST", "/templates", t) : call<Template>("PUT", `/templates/${enc(t.id!)}`, t),

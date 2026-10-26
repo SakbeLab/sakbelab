@@ -5,7 +5,7 @@ import react from "@vitejs/plugin-react";
 // Python package and ships with it. `npm run dev` proxies the API to a local backend.
 export default defineConfig({
   plugins: [react()],
-  build: { outDir: "../backend/sakbe/web", emptyOutDir: true, chunkSizeWarningLimit: 1200 },
+  build: { outDir: "../backend/sakbe/web", emptyOutDir: true, chunkSizeWarningLimit: 1400, target: "es2022" },
   server: {
     proxy: {
       "/api": { target: "http://127.0.0.1:8080", ws: true },
