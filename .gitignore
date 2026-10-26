@@ -14,6 +14,7 @@ build/
 
 # Packer / OVA
 ova/output-*/
+ova/output/
 ova/packer_cache/
 *.ova
 *.ovf

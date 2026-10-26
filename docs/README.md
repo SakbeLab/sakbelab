@@ -2,6 +2,8 @@
 
 - [Especificación del MVP](https://claude.ai/artifact/JwSFizaYnBi8fqtYgExWU5): visión, alcance, arquitectura y hoja de ruta.
 - [Prueba de la Fase 0](fase0.md): instalación en una VM y primer lab
+- [Actualizar SakbeLab](actualizar.md)
+- [Construir la OVA](../ova/README.md)
 - [Formato .sakbe v1](../spec/sakbe-format-v1.md)
 - [Imágenes gratuitas e importación](imagenes-gratuitas.md)
 - [Cisco IOL](iol.md)
