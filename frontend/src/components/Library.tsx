@@ -367,6 +367,8 @@ function TemplateForm({ initial, images, isNew, onCancel, onSaved, notify }: {
         </label>
       </div>
       {t.engine === "qemu" && (
+        <fieldset className="group">
+        <legend>Opciones de QEMU</legend>
         <div className="row">
           <label className="field">
             <span>Tarjeta de red</span>
@@ -426,9 +428,10 @@ function TemplateForm({ initial, images, isNew, onCancel, onSaved, notify }: {
             <span className="help">Discos vacíos, por ejemplo 30 para FortiGate.</span>
           </label>
         </div>
+        </fieldset>
       )}
       {t.engine !== "switch" && (
-        <div className="row">
+        <div className="row compact">
           <label className="field">
             <span>RAM (MB)</span>
             <input type="number" min={32} step={32} value={t.defaults?.ram ?? ""}

@@ -249,7 +249,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .field textarea { font-family: var(--mono); font-size: 13px; min-height: 180px; resize: vertical; }
 .field .help { font-size: 12px; color: var(--ink-soft); }
-.row { align-items: start; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.row { align-items: start; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 10px 14px; }
+.row.compact { grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); }
+.field, .field input, .field select, .field textarea { min-width: 0; width: 100%; }
+.field select { text-overflow: ellipsis; }
+.dialog .body { overflow-x: hidden; }
+fieldset.group {
+  border: 1px solid var(--limestone-2); border-radius: 8px; padding: 12px 14px 2px; margin: 0 0 14px; min-width: 0;
+}
+fieldset.group legend { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); padding: 0 6px; }
+@media (max-width: 640px) {
+  .dialog { max-height: 100vh; border-radius: 0; }
+  .backdrop { padding: 0; }
+  .dialog header, .dialog .body, .dialog footer { padding-left: 14px; padding-right: 14px; }
+  .icon-pick button { width: calc(25% - 5px); }
+}
 .btn {
   display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius);
   border: 1px solid #cdd6df; background: #fff; cursor: pointer; font-weight: 500;
