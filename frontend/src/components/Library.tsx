@@ -161,7 +161,7 @@ function presetFor(fileName: string): Partial<Template> | null {
       name: "Cisco vIOS-L2", vendor: "Cisco", category: "switch", icon: "l3switch", name_prefix: "SW",
       defaults: { ram: 1024, cpus: 1 },
       interfaces: { count: 16, naming: "Gi{slot}/{port}", start: 0, ports_per_slot: 4 },
-      config: { nic: "e1000", disk_interface: "virtio", config: "ios-disk" },
+      config: { nic: "e1000", disk_interface: "ide", config: "ios-disk" },
     };
   }
   if (/^vios/.test(n)) {
@@ -169,7 +169,7 @@ function presetFor(fileName: string): Partial<Template> | null {
       name: "Cisco vIOS", vendor: "Cisco", category: "router", icon: "router", name_prefix: "R",
       defaults: { ram: 1024, cpus: 1 },
       interfaces: { count: 8, naming: "Gi0/{index}", start: 0, ports_per_slot: 4 },
-      config: { nic: "e1000", disk_interface: "virtio", config: "ios-disk" },
+      config: { nic: "e1000", disk_interface: "ide", config: "ios-disk" },
     };
   }
   if (/fortios|fgt|fortigate/.test(n)) {

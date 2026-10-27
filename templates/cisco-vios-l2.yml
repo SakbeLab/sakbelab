@@ -18,5 +18,5 @@ console:
   type: serial
 config:
   nic: e1000
-  disk_interface: virtio
+  disk_interface: ide  # virtio se cuelga con QEMU 10 (error "Guest says index")
   config: ios-disk
